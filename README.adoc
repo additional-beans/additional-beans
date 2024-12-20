@@ -1,0 +1,65 @@
+= Additional beans for Spring Boot 3.4+
+
+This project provide Spring Boot Starters for configuring additional beans without backing off Spring Boot auto-configured one.
+Thanks to https://github.com/spring-projects/spring-boot/commit/2ecb4ebd4947cfe3abd28d9a611186b680a59959.
+
+== Getting started
+
+Take `additional-beans-redis-spring-boot-starter` for example:
+[source,kotlin]
+----
+implementation("io.additionalbeans:additional-beans-redis-spring-boot-starter")
+----
+
+Then you can configure it as following:
+[source,yaml]
+----
+
+additional.redis.prefixes: [foo, bar]
+
+# primary redis service
+spring.data.redis:
+  host: 127.0.0.1
+  port: 6379
+  client-name: default
+
+# additional foo redis service, inherit from primary properties
+foo.data.redis:
+  host: 127.0.0.1 # not required because it's equal to spring.data.redis.host
+  database: 1
+  client-name: foo
+
+# additional bar redis service, inherit from primary properties
+bar.data.redis:
+  database: 2
+  client-type: jedis
+----
+
+And you can inject beans using `@Qualifier` as following:
+[source,java]
+----
+
+	@Autowired
+	@Qualifier("fooRedisConnectionFactory")
+	private RedisConnectionFactory fooRedisConnectionFactory;
+
+	@Autowired
+	@Qualifier("barRedisConnectionFactory")
+	private RedisConnectionFactory barRedisConnectionFactory;
+
+	@Autowired
+	@Qualifier("fooRedisTemplate")
+	private RedisTemplate<Object, Object> fooRedisTemplate;
+
+	@Autowired
+	@Qualifier("barRedisTemplate")
+	private RedisTemplate<Object, Object> barRedisTemplate;
+
+	@Autowired
+	@Qualifier("fooStringRedisTemplate")
+	private StringRedisTemplate fooStringRedisTemplate;
+
+	@Autowired
+	@Qualifier("barStringRedisTemplate")
+	private StringRedisTemplate barStringRedisTemplate;
+----
