@@ -73,11 +73,11 @@ public class AdditionalRedisPostProcessor
 	@Override
 	public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
 		for (String prefix : this.names) {
-			registerAdditionalRedisProperties(registry, prefix);
-			registerAdditionalRedisConnectionDetails(registry, prefix);
-			registerAdditionalRedisConnectionFactory(registry, prefix);
-			registerAdditionalRedisTemplate(registry, prefix);
-			registerAdditionalStringRedisTemplate(registry, prefix);
+			if (!registry.containsBeanDefinition(beanNameFor(RedisProperties.class, prefix))) {
+				registerRedisProperties(registry, prefix);
+				registerRedisConnectionFactory(registry, prefix);
+				registerRedisTemplate(registry, prefix);
+			}
 		}
 	}
 
@@ -95,7 +95,7 @@ public class AdditionalRedisPostProcessor
 		return bean;
 	}
 
-	private void registerAdditionalRedisProperties(BeanDefinitionRegistry registry, String prefix) {
+	private void registerRedisProperties(BeanDefinitionRegistry registry, String prefix) {
 		RootBeanDefinition beanDefinition = new RootBeanDefinition();
 		beanDefinition.setTargetType(RedisProperties.class);
 		beanDefinition.setDefaultCandidate(false);
@@ -108,10 +108,8 @@ public class AdditionalRedisPostProcessor
 			return properties;
 		});
 		registry.registerBeanDefinition(beanNameFor(RedisProperties.class, prefix), beanDefinition);
-	}
 
-	private void registerAdditionalRedisConnectionDetails(BeanDefinitionRegistry registry, String prefix) {
-		RootBeanDefinition beanDefinition = new RootBeanDefinition();
+		beanDefinition = new RootBeanDefinition();
 		beanDefinition.setDefaultCandidate(false);
 		beanDefinition.setBeanClassName(RedisProperties.class.getPackageName() + ".PropertiesRedisConnectionDetails");
 		ConstructorArgumentValues arguments = new ConstructorArgumentValues();
@@ -121,7 +119,7 @@ public class AdditionalRedisPostProcessor
 		registry.registerBeanDefinition(beanNameFor(RedisConnectionDetails.class, prefix), beanDefinition);
 	}
 
-	private void registerAdditionalRedisConnectionFactory(BeanDefinitionRegistry registry, String prefix) {
+	private void registerRedisConnectionFactory(BeanDefinitionRegistry registry, String prefix) {
 
 		boolean useJedis = useJedisFor(prefix);
 
@@ -189,7 +187,7 @@ public class AdditionalRedisPostProcessor
 		registry.registerBeanDefinition(beanNameFor(RedisConnectionFactory.class, prefix), beanDefinition);
 	}
 
-	private void registerAdditionalRedisTemplate(BeanDefinitionRegistry registry, String prefix) {
+	private void registerRedisTemplate(BeanDefinitionRegistry registry, String prefix) {
 		RootBeanDefinition beanDefinition = new RootBeanDefinition();
 		beanDefinition.setDefaultCandidate(false);
 		beanDefinition.setTargetType(RedisTemplate.class);
@@ -198,10 +196,8 @@ public class AdditionalRedisPostProcessor
 			.redisTemplate(this.applicationContext.getBean(prefix + RedisConnectionFactory.class.getSimpleName(),
 					RedisConnectionFactory.class)));
 		registry.registerBeanDefinition(beanNameFor(RedisTemplate.class, prefix), beanDefinition);
-	}
 
-	private void registerAdditionalStringRedisTemplate(BeanDefinitionRegistry registry, String prefix) {
-		RootBeanDefinition beanDefinition = new RootBeanDefinition();
+		beanDefinition = new RootBeanDefinition();
 		beanDefinition.setDefaultCandidate(false);
 		beanDefinition.setTargetType(StringRedisTemplate.class);
 		beanDefinition.setInstanceSupplier(() -> this.applicationContext
