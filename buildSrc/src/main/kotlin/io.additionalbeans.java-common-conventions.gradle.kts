@@ -58,33 +58,6 @@ dependencies {
 	mockitoAgent("org.mockito:mockito-core") { isTransitive = false }
 }
 
-testing {
-	suites {
-		val test by getting(JvmTestSuite::class) {
-			useJUnitJupiter()
-		}
-		val integrationTest by registering(JvmTestSuite::class) {
-			sources {
-				compileClasspath += sourceSets.test.get().output
-				runtimeClasspath += sourceSets.test.get().output
-			}
-			targets {
-				all {
-					testTask.configure {
-						shouldRunAfter(test)
-					}
-				}
-			}
-		}
-
-		val integration: String? by rootProject
-		if (integration != null) {
-			val check by tasks.existing
-			check.get().dependsOn(integrationTest)
-		}
-	}
-}
-
 java {
 	withSourcesJar()
 }
@@ -107,6 +80,7 @@ tasks.withType<JavaCompile> {
 }
 
 tasks.withType<Test> {
+	useJUnitPlatform()
 	jvmArgs(listOf("-javaagent:${mockitoAgent.asPath}", "-Xshare:off"))
 }
 
