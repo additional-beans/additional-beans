@@ -5,7 +5,9 @@ Thanks to https://github.com/spring-projects/spring-boot/commit/2ecb4ebd4947cfe3
 
 == Getting started
 
-Take `additional-beans-redis-spring-boot-starter` for example:
+=== Additional redis beans
+
+Add dependency:
 [source,kotlin]
 ----
 implementation("io.additionalbeans:additional-beans-redis-spring-boot-starter")
@@ -29,7 +31,6 @@ foo.data.redis:
   database: 1
   client-name: foo
 
-# additional bar redis service, inherit from primary properties
 bar.data.redis:
   database: 2
   client-type: jedis
@@ -62,4 +63,68 @@ And you can inject beans using `@Qualifier` as following:
 	@Autowired
 	@Qualifier("barStringRedisTemplate")
 	private StringRedisTemplate barStringRedisTemplate;
+----
+
+=== Additional jdbc beans
+
+Add dependency:
+[source,kotlin]
+----
+implementation("io.additionalbeans:additional-beans-jdbc-spring-boot-starter")
+----
+
+Then you can configure it as following:
+[source,yaml]
+----
+
+additional.jdbc.prefixes: [foo, bar]
+
+# primary data source
+spring.datasource:
+  driver-class-name: org.h2.Driver
+  url: jdbc:h2:mem:spring
+
+# additional data sources, inherit from primary properties
+foo.datasource:
+  driver-class-name: org.h2.Driver # not required because it's equal to spring.data.redis.host
+  url: jdbc:h2:mem:foo
+
+bar.datasource:
+  url: jdbc:h2:mem:bar
+----
+
+And you can inject beans using `@Qualifier` as following:
+[source,java]
+----
+	@Autowired
+	@Qualifier("fooDataSource")
+	private DataSource fooDataSource;
+
+	@Autowired
+	@Qualifier("barDataSource")
+	private DataSource barDataSource;
+
+	@Autowired
+	@Qualifier("fooJdbcTemplate")
+	private JdbcTemplate fooJdbcTemplate;
+
+	@Autowired
+	@Qualifier("barJdbcTemplate")
+	private JdbcTemplate barJdbcTemplate;
+
+	@Autowired
+	@Qualifier("fooNamedParameterJdbcTemplate")
+	private NamedParameterJdbcTemplate fooNamedParameterJdbcTemplate;
+
+	@Autowired
+	@Qualifier("barNamedParameterJdbcTemplate")
+	private NamedParameterJdbcTemplate barNamedParameterJdbcTemplate;
+
+	@Autowired
+	@Qualifier("fooJdbcClient")
+	private JdbcClient fooJdbcClient;
+
+	@Autowired
+	@Qualifier("barJdbcClient")
+	private JdbcClient barJdbcClient;
 ----

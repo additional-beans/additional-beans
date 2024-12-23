@@ -238,7 +238,7 @@ public class AdditionalRedisPostProcessor
 	}
 
 	private static String beanNameFor(Class<?> beanClass, String prefix) {
-		if (beanClass.getName().startsWith("org.springframework")) {
+		if (beanClass.getName().startsWith("org.springframework.")) {
 			return prefix + beanClass.getSimpleName();
 		}
 		else {
