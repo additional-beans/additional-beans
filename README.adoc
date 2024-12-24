@@ -16,21 +16,18 @@ implementation("io.additionalbeans:additional-beans-redis-spring-boot-starter")
 Then you can configure it as following:
 [source,yaml]
 ----
-
-additional.redis.prefixes: [foo, bar]
-
 # primary redis service
 spring.data.redis:
   host: 127.0.0.1
   port: 6379
   client-name: default
 
+additional.redis.prefixes: [foo, bar]
 # additional foo redis service, inherit from primary properties
 foo.data.redis:
   host: 127.0.0.1 # not required because it's equal to spring.data.redis.host
   database: 1
   client-name: foo
-
 bar.data.redis:
   database: 2
   client-type: jedis
@@ -76,21 +73,23 @@ implementation("io.additionalbeans:additional-beans-jdbc-spring-boot-starter")
 Then you can configure it as following:
 [source,yaml]
 ----
-
-additional.jdbc.prefixes: [foo, bar]
-
 # primary data source
 spring.datasource:
   driver-class-name: org.h2.Driver
   url: jdbc:h2:mem:spring
+  hikari.minimum-idle: 10
+  hikari.maximum-pool-size: 100
 
+
+additional.jdbc.prefixes: [foo, bar]
 # additional data sources, inherit from primary properties
 foo.datasource:
   driver-class-name: org.h2.Driver # not required because it's equal to spring.data.redis.host
   url: jdbc:h2:mem:foo
-
+  hikari.maximum-pool-size: 40
 bar.datasource:
   url: jdbc:h2:mem:bar
+  hikari.maximum-pool-size: 50
 ----
 
 And you can inject beans using `@Qualifier` as following:
