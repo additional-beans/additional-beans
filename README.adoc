@@ -104,6 +104,14 @@ And you can inject beans using `@Qualifier` as following:
 	private DataSource barDataSource;
 
 	@Autowired
+	@Qualifier("fooTransactionManager")
+	private DataSourceTransactionManager fooTransactionManager;
+
+	@Autowired
+	@Qualifier("barTransactionManager")
+	private DataSourceTransactionManager barTransactionManager;
+
+	@Autowired
 	@Qualifier("fooJdbcTemplate")
 	private JdbcTemplate fooJdbcTemplate;
 

@@ -1,5 +1,6 @@
 package io.additionalbeans.jdbc;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
@@ -7,21 +8,24 @@ import java.util.List;
 import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariDataSource;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.RootBeanDefinition;
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.JdbcClientAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.JdbcConnectionDetails;
 import org.springframework.boot.autoconfigure.jdbc.JdbcProperties;
+import org.springframework.boot.autoconfigure.transaction.TransactionManagerCustomizers;
 import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -32,6 +36,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.TransactionManager;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
@@ -86,6 +92,7 @@ public class AdditionalJdbcPostProcessor
 			if (!registry.containsBeanDefinition(beanNameFor(DataSourceProperties.class, prefix))) {
 				registerDataSourceProperties(registry, prefix);
 				registerDataSource(registry, prefix);
+				registerDataSourceTransactionManager(registry, prefix);
 				registerJdbcProperties(registry, prefix);
 				registerJdbcTemplate(registry, prefix);
 				registerJdbcClient(registry, prefix);
@@ -195,6 +202,31 @@ public class AdditionalJdbcPostProcessor
 		registry.registerBeanDefinition(beanNameFor(DataSource.class, prefix), beanDefinition);
 	}
 
+	private void registerDataSourceTransactionManager(BeanDefinitionRegistry registry, String prefix) {
+		RootBeanDefinition beanDefinition = new RootBeanDefinition();
+		beanDefinition.setTargetType(DataSourceTransactionManager.class);
+		beanDefinition.setDefaultCandidate(false);
+		beanDefinition.setInstanceSupplier(() -> {
+			try {
+				Class<?> jdbcTransactionManagerConfiguration = DataSourceTransactionManagerAutoConfiguration.class
+					.getDeclaredClasses()[0];
+				Constructor<?> ctor = jdbcTransactionManagerConfiguration.getDeclaredConstructor();
+				ctor.setAccessible(true);
+				Object configuration = ctor.newInstance();
+				Method method = jdbcTransactionManagerConfiguration.getDeclaredMethod("transactionManager",
+						Environment.class, DataSource.class, ObjectProvider.class);
+				method.setAccessible(true);
+				return method.invoke(configuration, this.environment,
+						this.applicationContext.getBean(beanNameFor(DataSource.class, prefix), DataSource.class),
+						this.applicationContext.getBeanProvider(TransactionManagerCustomizers.class));
+			}
+			catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
+		});
+		registry.registerBeanDefinition(beanNameFor(TransactionManager.class, prefix), beanDefinition);
+	}
+
 	private void registerJdbcTemplate(BeanDefinitionRegistry registry, String prefix) {
 		RootBeanDefinition beanDefinition = new RootBeanDefinition();
 		String jdbcTemplateConfiguration = "JdbcTemplateConfiguration";
@@ -283,7 +315,7 @@ public class AdditionalJdbcPostProcessor
 		beanDefinition.setBeanClass(HikariCheckpointRestoreLifecycle.class);
 		ConstructorArgumentValues arguments = new ConstructorArgumentValues();
 		arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(DataSource.class, prefix)));
-		arguments.addGenericArgumentValue(applicationContext);
+		arguments.addGenericArgumentValue(this.applicationContext);
 		beanDefinition.setConstructorArgumentValues(arguments);
 		registry.registerBeanDefinition(beanNameFor(HikariCheckpointRestoreLifecycle.class, prefix), beanDefinition);
 	}

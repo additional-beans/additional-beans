@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.JdbcClientAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.JdbcConnectionDetails;
 import org.springframework.boot.autoconfigure.jdbc.JdbcProperties;
@@ -23,6 +24,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,8 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 		"foo.jdbc.template.max-rows=2000", "bar.datasource.name=bar", "bar.datasource.url=jdbc:h2:mem:bar",
 		"bar.datasource.hikari.minimum-idle=30", "bar.datasource.hikari.maximum-pool-size=60",
 		"bar.jdbc.template.max-rows=3000" })
-@ImportAutoConfiguration({ DataSourceAutoConfiguration.class, JdbcTemplateAutoConfiguration.class,
-		JdbcClientAutoConfiguration.class, AdditionalJdbcAutoConfiguration.class })
+@ImportAutoConfiguration({ DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class,
+		JdbcTemplateAutoConfiguration.class, JdbcClientAutoConfiguration.class, AdditionalJdbcAutoConfiguration.class })
 @SpringJUnitConfig
 class AdditionalDataSourceAutoConfigurationTests {
 
@@ -75,6 +77,17 @@ class AdditionalDataSourceAutoConfigurationTests {
 	@Autowired
 	@Qualifier("barDataSource")
 	private DataSource barDataSource;
+
+	@Autowired
+	private PlatformTransactionManager transactionManager;
+
+	@Autowired
+	@Qualifier("fooTransactionManager")
+	private PlatformTransactionManager fooTransactionManager;
+
+	@Autowired
+	@Qualifier("barTransactionManager")
+	private PlatformTransactionManager barTransactionManager;
 
 	@Autowired
 	private JdbcProperties jdbcProperties;
@@ -165,6 +178,13 @@ class AdditionalDataSourceAutoConfigurationTests {
 		try (Connection connection = this.barDataSource.getConnection()) {
 			assertThat(connection.getCatalog()).isEqualTo("bar".toUpperCase(Locale.ROOT));
 		}
+	}
+
+	@Test
+	void testJdbcTransactionManager() {
+		assertThat(this.fooTransactionManager).isNotSameAs(this.transactionManager);
+		assertThat(this.barTransactionManager).isNotSameAs(this.transactionManager);
+		assertThat(this.fooTransactionManager).isNotSameAs(this.barTransactionManager);
 	}
 
 	@Test
