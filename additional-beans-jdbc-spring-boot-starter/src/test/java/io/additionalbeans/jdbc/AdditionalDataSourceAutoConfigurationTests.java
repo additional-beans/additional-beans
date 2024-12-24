@@ -30,13 +30,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Yanming Zhou
  */
 @TestPropertySource(properties = { AdditionalJdbcPostProcessor.KEY_ADDITIONAL_JDBC_PREFIXES + "=foo, bar",
-		"spring.datasource.driver-class-name=org.h2.Driver", "spring.datasource.url=jdbc:h2:mem:default",
-		"spring.datasource.hikari.minimum-idle=10", "spring.datasource.hikari.maximum-pool-size=20",
-		"spring.jdbc.template.fetch-size=100", "spring.jdbc.template.max-rows=1000",
-		"foo.datasource.url=jdbc:h2:mem:foo", "foo.datasource.hikari.minimum-idle=20",
-		"foo.datasource.hikari.maximum-pool-size=40", "foo.jdbc.template.max-rows=2000",
-		"bar.datasource.url=jdbc:h2:mem:bar", "bar.datasource.hikari.minimum-idle=30",
-		"bar.datasource.hikari.maximum-pool-size=60", "bar.jdbc.template.max-rows=3000" })
+		"spring.datasource.name=spring", "spring.datasource.driver-class-name=org.h2.Driver",
+		"spring.datasource.url=jdbc:h2:mem:default", "spring.datasource.hikari.minimum-idle=10",
+		"spring.datasource.hikari.maximum-pool-size=20", "spring.jdbc.template.fetch-size=100",
+		"spring.jdbc.template.max-rows=1000", "foo.datasource.name=foo", "foo.datasource.url=jdbc:h2:mem:foo",
+		"foo.datasource.hikari.minimum-idle=20", "foo.datasource.hikari.maximum-pool-size=40",
+		"foo.jdbc.template.max-rows=2000", "bar.datasource.name=bar", "bar.datasource.url=jdbc:h2:mem:bar",
+		"bar.datasource.hikari.minimum-idle=30", "bar.datasource.hikari.maximum-pool-size=60",
+		"bar.jdbc.template.max-rows=3000" })
 @ImportAutoConfiguration({ DataSourceAutoConfiguration.class, JdbcTemplateAutoConfiguration.class,
 		JdbcClientAutoConfiguration.class, AdditionalJdbcAutoConfiguration.class })
 @SpringJUnitConfig
@@ -140,14 +141,17 @@ class AdditionalDataSourceAutoConfigurationTests {
 	@Test
 	void testDataSource() throws SQLException {
 		assertThat(this.dataSource).isInstanceOfSatisfying(HikariDataSource.class, (ds) -> {
+			assertThat(ds.getPoolName()).isEqualTo("spring");
 			assertThat(ds.getMinimumIdle()).isEqualTo(10);
 			assertThat(ds.getMaximumPoolSize()).isEqualTo(20);
 		});
 		assertThat(this.fooDataSource).isInstanceOfSatisfying(HikariDataSource.class, (ds) -> {
+			assertThat(ds.getPoolName()).isEqualTo("foo");
 			assertThat(ds.getMinimumIdle()).isEqualTo(20);
 			assertThat(ds.getMaximumPoolSize()).isEqualTo(40);
 		});
 		assertThat(this.barDataSource).isInstanceOfSatisfying(HikariDataSource.class, (ds) -> {
+			assertThat(ds.getPoolName()).isEqualTo("bar");
 			assertThat(ds.getMinimumIdle()).isEqualTo(30);
 			assertThat(ds.getMaximumPoolSize()).isEqualTo(60);
 		});

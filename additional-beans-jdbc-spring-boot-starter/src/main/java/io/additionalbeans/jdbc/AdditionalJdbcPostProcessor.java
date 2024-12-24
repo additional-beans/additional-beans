@@ -6,6 +6,7 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
+import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.RootBeanDefinition;
+import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.autoconfigure.jdbc.JdbcClientAutoConfiguration;
@@ -23,12 +25,15 @@ import org.springframework.boot.autoconfigure.jdbc.JdbcProperties;
 import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.jdbc.HikariCheckpointRestoreLifecycle;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.util.ClassUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * @author Yanming Zhou
@@ -41,6 +46,14 @@ public class AdditionalJdbcPostProcessor
 	private static final String SPRING_DATASOURCE_PREFIX = "spring.datasource";
 
 	private static final String SPRING_JDBC_PREFIX = "spring.jdbc";
+
+	private static final String HIKARI_DATASOURCE_CLASS_NAME = "com.zaxxer.hikari.HikariDataSource";
+
+	private static final String DBCP2_DATASOURCE_CLASS_NAME = "org.apache.commons.dbcp2.BasicDataSource";
+
+	private static final String TOMCAT_DATASOURCE_CLASS_NAME = "org.apache.tomcat.jdbc.pool.DataSource";
+
+	private static final String ORACLE_UCP_DATASOURCE_CLASS_NAME = "oracle.ucp.jdbc.PoolDataSourceImpl";
 
 	private ApplicationContext applicationContext;
 
@@ -76,6 +89,10 @@ public class AdditionalJdbcPostProcessor
 				registerJdbcProperties(registry, prefix);
 				registerJdbcTemplate(registry, prefix);
 				registerJdbcClient(registry, prefix);
+				if (useHikariFor(prefix) && ClassUtils.isPresent("org.crac.Resource",
+						DataSourceAutoConfiguration.class.getClassLoader())) {
+					registerHikariCheckpointRestoreLifecycle(registry, prefix);
+				}
 			}
 		}
 	}
@@ -100,13 +117,17 @@ public class AdditionalJdbcPostProcessor
 					String namePrefix = SPRING_DATASOURCE_PREFIX.replace("spring", prefix) + '.';
 					Bindable<?> bindable = Bindable.ofInstance(bean);
 					switch (type) {
-						case "com.zaxxer.hikari.HikariDataSource" -> this.binder.bind(namePrefix + "hikari", bindable);
-						case "org.apache.commons.dbcp2.BasicDataSource" ->
-							this.binder.bind(namePrefix + "dbcp2", bindable);
-						case "org.apache.tomcat.jdbc.pool.DataSource" ->
-							this.binder.bind(namePrefix + "tomcat", bindable);
-						case "oracle.ucp.jdbc.PoolDataSourceImpl" ->
-							this.binder.bind(namePrefix + "oracleucp", bindable);
+						case HIKARI_DATASOURCE_CLASS_NAME -> {
+							this.binder.bind(namePrefix + "hikari", bindable);
+							String name = this.environment.getProperty(namePrefix + "name");
+							if (!StringUtils.hasText(name)) {
+								name = prefix;
+							}
+							((HikariDataSource) bean).setPoolName(name);
+						}
+						case DBCP2_DATASOURCE_CLASS_NAME -> this.binder.bind(namePrefix + "dbcp2", bindable);
+						case TOMCAT_DATASOURCE_CLASS_NAME -> this.binder.bind(namePrefix + "tomcat", bindable);
+						case ORACLE_UCP_DATASOURCE_CLASS_NAME -> this.binder.bind(namePrefix + "oracleucp", bindable);
 					}
 
 				}
@@ -254,6 +275,25 @@ public class AdditionalJdbcPostProcessor
 			}
 		});
 		registry.registerBeanDefinition(beanNameFor(JdbcClient.class, prefix), beanDefinition);
+	}
+
+	private void registerHikariCheckpointRestoreLifecycle(BeanDefinitionRegistry registry, String prefix) {
+		RootBeanDefinition beanDefinition = new RootBeanDefinition();
+		beanDefinition.setDefaultCandidate(false);
+		beanDefinition.setBeanClass(HikariCheckpointRestoreLifecycle.class);
+		ConstructorArgumentValues arguments = new ConstructorArgumentValues();
+		arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(DataSource.class, prefix)));
+		arguments.addGenericArgumentValue(applicationContext);
+		beanDefinition.setConstructorArgumentValues(arguments);
+		registry.registerBeanDefinition(beanNameFor(HikariCheckpointRestoreLifecycle.class, prefix), beanDefinition);
+	}
+
+	private boolean useHikariFor(String prefix) {
+		String suffix = ".type";
+		String type = this.environment.getProperty(SPRING_DATASOURCE_PREFIX.replace("spring", prefix) + suffix,
+				this.environment.getProperty(SPRING_DATASOURCE_PREFIX + suffix));
+		return HIKARI_DATASOURCE_CLASS_NAME.equals(type) || type == null && ClassUtils
+			.isPresent(HIKARI_DATASOURCE_CLASS_NAME, DataSourceAutoConfiguration.class.getClassLoader());
 	}
 
 	private static String beanNameFor(Class<?> beanClass, String prefix) {
