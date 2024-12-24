@@ -78,11 +78,11 @@ public class AdditionalRedisPostProcessor
 	@Override
 	public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
 		for (String prefix : this.names) {
-			if (!registry.containsBeanDefinition(beanNameFor(RedisProperties.class, prefix))) {
-				registerRedisProperties(registry, prefix);
-				registerRedisConnectionFactory(registry, prefix);
-				registerRedisTemplate(registry, prefix);
-			}
+
+			registerRedisProperties(registry, prefix);
+			registerRedisConnectionFactory(registry, prefix);
+			registerRedisTemplate(registry, prefix);
+
 		}
 	}
 
@@ -101,31 +101,39 @@ public class AdditionalRedisPostProcessor
 	}
 
 	private void registerRedisProperties(BeanDefinitionRegistry registry, String prefix) {
-		RootBeanDefinition beanDefinition = new RootBeanDefinition();
-		beanDefinition.setTargetType(RedisProperties.class);
-		beanDefinition.setDefaultCandidate(false);
-		beanDefinition.setInstanceSupplier(() -> {
-			RedisProperties properties = new RedisProperties();
-			RedisProperties defaultRedisProperties = this.applicationContext.getBean(
-					"%s-%s".formatted(SPRING_DATA_REDIS_PREFIX, RedisProperties.class.getName()),
-					RedisProperties.class);
-			BeanUtils.copyProperties(defaultRedisProperties, properties);
-			return properties;
-		});
-		registry.registerBeanDefinition(beanNameFor(RedisProperties.class, prefix), beanDefinition);
+		if (!registry.containsBeanDefinition(beanNameFor(RedisProperties.class, prefix))) {
+			RootBeanDefinition beanDefinition = new RootBeanDefinition();
+			beanDefinition.setTargetType(RedisProperties.class);
+			beanDefinition.setDefaultCandidate(false);
+			beanDefinition.setInstanceSupplier(() -> {
+				RedisProperties properties = new RedisProperties();
+				RedisProperties defaultRedisProperties = this.applicationContext.getBean(
+						"%s-%s".formatted(SPRING_DATA_REDIS_PREFIX, RedisProperties.class.getName()),
+						RedisProperties.class);
+				BeanUtils.copyProperties(defaultRedisProperties, properties);
+				return properties;
+			});
+			registry.registerBeanDefinition(beanNameFor(RedisProperties.class, prefix), beanDefinition);
+		}
 
-		beanDefinition = new RootBeanDefinition();
-		beanDefinition.setDefaultCandidate(false);
-		beanDefinition.setBeanClassName(RedisProperties.class.getPackageName() + ".PropertiesRedisConnectionDetails");
-		ConstructorArgumentValues arguments = new ConstructorArgumentValues();
-		arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(RedisProperties.class, prefix)));
-		beanDefinition.setConstructorArgumentValues(arguments);
-		beanDefinition.setTargetType(RedisConnectionDetails.class);
-		registry.registerBeanDefinition(beanNameFor(RedisConnectionDetails.class, prefix), beanDefinition);
+		if (!registry.containsBeanDefinition(beanNameFor(RedisConnectionDetails.class, prefix))) {
+			RootBeanDefinition beanDefinition = new RootBeanDefinition();
+			beanDefinition.setDefaultCandidate(false);
+			beanDefinition
+				.setBeanClassName(RedisProperties.class.getPackageName() + ".PropertiesRedisConnectionDetails");
+			ConstructorArgumentValues arguments = new ConstructorArgumentValues();
+			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(RedisProperties.class, prefix)));
+			beanDefinition.setConstructorArgumentValues(arguments);
+			beanDefinition.setTargetType(RedisConnectionDetails.class);
+			registry.registerBeanDefinition(beanNameFor(RedisConnectionDetails.class, prefix), beanDefinition);
+		}
 	}
 
 	private void registerRedisConnectionFactory(BeanDefinitionRegistry registry, String prefix) {
 
+		if (registry.containsBeanDefinition(beanNameFor(RedisConnectionFactory.class, prefix))) {
+			return;
+		}
 		boolean useJedis = useJedisFor(prefix);
 
 		String connectionConfigurationClassName = useJedis ? "JedisConnectionConfiguration"
@@ -215,19 +223,23 @@ public class AdditionalRedisPostProcessor
 
 		RedisAutoConfiguration redisAutoConfiguration = new RedisAutoConfiguration();
 
-		RootBeanDefinition beanDefinition = new RootBeanDefinition();
-		beanDefinition.setDefaultCandidate(false);
-		beanDefinition.setTargetType(RedisTemplate.class);
-		beanDefinition.setInstanceSupplier(() -> redisAutoConfiguration.redisTemplate(this.applicationContext
-			.getBean(prefix + RedisConnectionFactory.class.getSimpleName(), RedisConnectionFactory.class)));
-		registry.registerBeanDefinition(beanNameFor(RedisTemplate.class, prefix), beanDefinition);
+		if (!registry.containsBeanDefinition(beanNameFor(RedisTemplate.class, prefix))) {
+			RootBeanDefinition beanDefinition = new RootBeanDefinition();
+			beanDefinition.setDefaultCandidate(false);
+			beanDefinition.setTargetType(RedisTemplate.class);
+			beanDefinition.setInstanceSupplier(() -> redisAutoConfiguration.redisTemplate(this.applicationContext
+				.getBean(prefix + RedisConnectionFactory.class.getSimpleName(), RedisConnectionFactory.class)));
+			registry.registerBeanDefinition(beanNameFor(RedisTemplate.class, prefix), beanDefinition);
+		}
 
-		beanDefinition = new RootBeanDefinition();
-		beanDefinition.setDefaultCandidate(false);
-		beanDefinition.setTargetType(StringRedisTemplate.class);
-		beanDefinition.setInstanceSupplier(() -> redisAutoConfiguration.stringRedisTemplate(this.applicationContext
-			.getBean(prefix + RedisConnectionFactory.class.getSimpleName(), RedisConnectionFactory.class)));
-		registry.registerBeanDefinition(beanNameFor(StringRedisTemplate.class, prefix), beanDefinition);
+		if (!registry.containsBeanDefinition(beanNameFor(StringRedisTemplate.class, prefix))) {
+			RootBeanDefinition beanDefinition = new RootBeanDefinition();
+			beanDefinition.setDefaultCandidate(false);
+			beanDefinition.setTargetType(StringRedisTemplate.class);
+			beanDefinition.setInstanceSupplier(() -> redisAutoConfiguration.stringRedisTemplate(this.applicationContext
+				.getBean(prefix + RedisConnectionFactory.class.getSimpleName(), RedisConnectionFactory.class)));
+			registry.registerBeanDefinition(beanNameFor(StringRedisTemplate.class, prefix), beanDefinition);
+		}
 	}
 
 	private boolean useJedisFor(String prefix) {
