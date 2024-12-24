@@ -91,6 +91,27 @@ public class AdditionalJdbcPostProcessor
 				}
 			}
 		}
+		else if (bean instanceof DataSource) {
+			String suffix = DataSource.class.getSimpleName();
+			if (beanName.endsWith(suffix)) {
+				String prefix = beanName.substring(0, beanName.length() - suffix.length());
+				if (this.names.contains(prefix)) {
+					String type = bean.getClass().getName();
+					String namePrefix = SPRING_DATASOURCE_PREFIX.replace("spring", prefix) + '.';
+					Bindable<?> bindable = Bindable.ofInstance(bean);
+					switch (type) {
+						case "com.zaxxer.hikari.HikariDataSource" -> this.binder.bind(namePrefix + "hikari", bindable);
+						case "org.apache.commons.dbcp2.BasicDataSource" ->
+							this.binder.bind(namePrefix + "dbcp2", bindable);
+						case "org.apache.tomcat.jdbc.pool.DataSource" ->
+							this.binder.bind(namePrefix + "tomcat", bindable);
+						case "oracle.ucp.jdbc.PoolDataSourceImpl" ->
+							this.binder.bind(namePrefix + "oracleucp", bindable);
+					}
+
+				}
+			}
+		}
 		else if (bean instanceof JdbcProperties) {
 			String suffix = JdbcProperties.class.getSimpleName();
 			if (beanName.endsWith(suffix)) {
