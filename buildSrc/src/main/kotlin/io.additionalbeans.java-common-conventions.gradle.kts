@@ -1,5 +1,3 @@
-@file:Suppress("UnstableApiUsage")
-
 plugins {
 	java
 	checkstyle
@@ -50,10 +48,36 @@ dependencyManagement {
 	}
 }
 
+val integrationTest: SourceSet by sourceSets.creating {
+	compileClasspath += sourceSets.test.get().output
+}
+configurations[integrationTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
+configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
+
+val integrationTestTask = tasks.register<Test>("integrationTest") {
+	description = "Runs integration tests."
+	group = "verification"
+
+	testClassesDirs = integrationTest.output.classesDirs
+	classpath = configurations[integrationTest.runtimeClasspathConfigurationName] + integrationTest.output
+
+	shouldRunAfter(tasks.test)
+}
+
+val integration: String? by rootProject
+if (integration != null) {
+	tasks.check {
+		dependsOn(integrationTestTask)
+	}
+}
+
 val mockitoAgent = configurations.create("mockitoAgent")
 
 dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	"integrationTestImplementation"(project)
+	"integrationTestImplementation"("org.springframework.boot:spring-boot-testcontainers")
+	"integrationTestImplementation"("org.testcontainers:junit-jupiter")
 	checkstyle("""io.spring.javaformat:spring-javaformat-checkstyle:${property("javaformat-plugin.version")}""")
 	mockitoAgent("org.mockito:mockito-core") { isTransitive = false }
 }
