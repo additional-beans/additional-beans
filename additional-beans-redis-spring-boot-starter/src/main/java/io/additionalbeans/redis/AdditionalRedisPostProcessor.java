@@ -2,21 +2,17 @@ package io.additionalbeans.redis;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.List;
 
+import io.additionalbeans.commons.AdditionalBeansPostProcessor;
 import io.lettuce.core.resource.ClientResources;
 import io.lettuce.core.resource.DefaultClientResources;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.boot.autoconfigure.data.redis.ClientResourcesBuilderCustomizer;
 import org.springframework.boot.autoconfigure.data.redis.JedisClientConfigurationBuilderCustomizer;
@@ -25,13 +21,8 @@ import org.springframework.boot.autoconfigure.data.redis.LettuceClientOptionsBui
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.boot.autoconfigure.data.redis.RedisConnectionDetails;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
-import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.context.properties.bind.Bindable;
-import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.ssl.SslBundles;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.core.env.Environment;
 import org.springframework.data.redis.connection.RedisClusterConfiguration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisSentinelConfiguration;
@@ -43,47 +34,22 @@ import org.springframework.util.ClassUtils;
 /**
  * @author Yanming Zhou
  */
-public class AdditionalRedisPostProcessor
-		implements BeanDefinitionRegistryPostProcessor, BeanPostProcessor, ApplicationContextAware, InitializingBean {
+public class AdditionalRedisPostProcessor extends AdditionalBeansPostProcessor {
 
 	public static final String KEY_ADDITIONAL_REDIS_PREFIXES = "additional.redis.prefixes";
 
 	private static final String SPRING_DATA_REDIS_PREFIX = "spring.data.redis";
 
-	private ApplicationContext applicationContext;
-
-	private Environment environment;
-
-	private Binder binder;
-
-	private List<String> names = Collections.emptyList();
-
 	@Override
-	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-		this.applicationContext = applicationContext;
-	}
-
-	@SuppressWarnings("unchecked")
-	@Override
-	public void afterPropertiesSet() {
-		this.environment = this.applicationContext.getEnvironment();
-		this.binder = Binder.get(this.environment);
-		try {
-			this.names = this.binder.bindOrCreate(KEY_ADDITIONAL_REDIS_PREFIXES, List.class);
-		}
-		catch (BindException ignored) {
-		}
+	protected String configurationKeyForPrefixes() {
+		return KEY_ADDITIONAL_REDIS_PREFIXES;
 	}
 
 	@Override
-	public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
-		for (String prefix : this.names) {
-
-			registerRedisProperties(registry, prefix);
-			registerRedisConnectionFactory(registry, prefix);
-			registerRedisTemplate(registry, prefix);
-
-		}
+	protected void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix) {
+		registerRedisProperties(registry, prefix);
+		registerRedisConnectionFactory(registry, prefix);
+		registerRedisTemplate(registry, prefix);
 	}
 
 	@Override
@@ -92,7 +58,7 @@ public class AdditionalRedisPostProcessor
 			String suffix = RedisProperties.class.getSimpleName();
 			if (beanName.endsWith(suffix)) {
 				String prefix = beanName.substring(0, beanName.length() - suffix.length());
-				if (this.names.contains(prefix)) {
+				if (this.prefixes.contains(prefix)) {
 					this.binder.bind(SPRING_DATA_REDIS_PREFIX.replace("spring", prefix), Bindable.ofInstance(bean));
 				}
 			}
@@ -101,7 +67,7 @@ public class AdditionalRedisPostProcessor
 	}
 
 	private void registerRedisProperties(BeanDefinitionRegistry registry, String prefix) {
-		if (!registry.containsBeanDefinition(beanNameFor(RedisProperties.class, prefix))) {
+		registerBeanDefinition(registry, RedisProperties.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setTargetType(RedisProperties.class);
 			beanDefinition.setDefaultCandidate(false);
@@ -113,10 +79,10 @@ public class AdditionalRedisPostProcessor
 				BeanUtils.copyProperties(defaultRedisProperties, properties);
 				return properties;
 			});
-			registry.registerBeanDefinition(beanNameFor(RedisProperties.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 
-		if (!registry.containsBeanDefinition(beanNameFor(RedisConnectionDetails.class, prefix))) {
+		registerBeanDefinition(registry, RedisConnectionDetails.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition
@@ -125,8 +91,8 @@ public class AdditionalRedisPostProcessor
 			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(RedisProperties.class, prefix)));
 			beanDefinition.setConstructorArgumentValues(arguments);
 			beanDefinition.setTargetType(RedisConnectionDetails.class);
-			registry.registerBeanDefinition(beanNameFor(RedisConnectionDetails.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 	}
 
 	private void registerRedisConnectionFactory(BeanDefinitionRegistry registry, String prefix) {
@@ -223,23 +189,23 @@ public class AdditionalRedisPostProcessor
 
 		RedisAutoConfiguration redisAutoConfiguration = new RedisAutoConfiguration();
 
-		if (!registry.containsBeanDefinition(beanNameFor(RedisTemplate.class, prefix))) {
+		registerBeanDefinition(registry, RedisTemplate.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(RedisTemplate.class);
 			beanDefinition.setInstanceSupplier(() -> redisAutoConfiguration.redisTemplate(this.applicationContext
 				.getBean(prefix + RedisConnectionFactory.class.getSimpleName(), RedisConnectionFactory.class)));
-			registry.registerBeanDefinition(beanNameFor(RedisTemplate.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 
-		if (!registry.containsBeanDefinition(beanNameFor(StringRedisTemplate.class, prefix))) {
+		registerBeanDefinition(registry, StringRedisTemplate.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(StringRedisTemplate.class);
 			beanDefinition.setInstanceSupplier(() -> redisAutoConfiguration.stringRedisTemplate(this.applicationContext
 				.getBean(prefix + RedisConnectionFactory.class.getSimpleName(), RedisConnectionFactory.class)));
-			registry.registerBeanDefinition(beanNameFor(StringRedisTemplate.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 	}
 
 	private boolean useJedisFor(String prefix) {
@@ -247,15 +213,6 @@ public class AdditionalRedisPostProcessor
 		return "jedis"
 			.equalsIgnoreCase(this.environment.getProperty(SPRING_DATA_REDIS_PREFIX.replace("spring", prefix) + suffix,
 					this.environment.getProperty(SPRING_DATA_REDIS_PREFIX + suffix)));
-	}
-
-	private static String beanNameFor(Class<?> beanClass, String prefix) {
-		if (beanClass.getName().startsWith("org.springframework.")) {
-			return prefix + beanClass.getSimpleName();
-		}
-		else {
-			return "%s-%s".formatted(prefix, beanClass.getName());
-		}
 	}
 
 }

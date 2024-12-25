@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
-	api("org.springframework.boot:spring-boot-starter-data-redis")
+	implementation(project(":additional-beans-commons"))
+	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	testImplementation("redis.clients:jedis")
 }

@@ -2,22 +2,18 @@ package io.additionalbeans.jdbc;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.List;
 
 import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariDataSource;
+import io.additionalbeans.commons.AdditionalBeansPostProcessor;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
@@ -26,12 +22,8 @@ import org.springframework.boot.autoconfigure.jdbc.JdbcClientAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.JdbcConnectionDetails;
 import org.springframework.boot.autoconfigure.jdbc.JdbcProperties;
 import org.springframework.boot.autoconfigure.transaction.TransactionManagerCustomizers;
-import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.context.properties.bind.Bindable;
-import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.jdbc.HikariCheckpointRestoreLifecycle;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -44,8 +36,7 @@ import org.springframework.util.StringUtils;
 /**
  * @author Yanming Zhou
  */
-public class AdditionalJdbcPostProcessor
-		implements BeanDefinitionRegistryPostProcessor, BeanPostProcessor, ApplicationContextAware, InitializingBean {
+public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 
 	public static final String KEY_ADDITIONAL_JDBC_PREFIXES = "additional.jdbc.prefixes";
 
@@ -61,45 +52,22 @@ public class AdditionalJdbcPostProcessor
 
 	private static final String ORACLE_UCP_DATASOURCE_CLASS_NAME = "oracle.ucp.jdbc.PoolDataSourceImpl";
 
-	private ApplicationContext applicationContext;
-
-	private Environment environment;
-
-	private Binder binder;
-
-	private List<String> names = Collections.emptyList();
-
 	@Override
-	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-		this.applicationContext = applicationContext;
-	}
-
-	@SuppressWarnings("unchecked")
-	@Override
-	public void afterPropertiesSet() {
-		this.environment = this.applicationContext.getEnvironment();
-		this.binder = Binder.get(this.environment);
-		try {
-			this.names = this.binder.bindOrCreate(KEY_ADDITIONAL_JDBC_PREFIXES, List.class);
-		}
-		catch (BindException ignored) {
-		}
+	protected String configurationKeyForPrefixes() {
+		return KEY_ADDITIONAL_JDBC_PREFIXES;
 	}
 
 	@Override
-	public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
-		for (String prefix : this.names) {
-
-			registerDataSourceProperties(registry, prefix);
-			registerDataSource(registry, prefix);
-			registerDataSourceTransactionManager(registry, prefix);
-			registerJdbcProperties(registry, prefix);
-			registerJdbcTemplate(registry, prefix);
-			registerJdbcClient(registry, prefix);
-			if (useHikariFor(prefix)
-					&& ClassUtils.isPresent("org.crac.Resource", DataSourceAutoConfiguration.class.getClassLoader())) {
-				registerHikariCheckpointRestoreLifecycle(registry, prefix);
-			}
+	protected void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix) {
+		registerDataSourceProperties(registry, prefix);
+		registerDataSource(registry, prefix);
+		registerDataSourceTransactionManager(registry, prefix);
+		registerJdbcProperties(registry, prefix);
+		registerJdbcTemplate(registry, prefix);
+		registerJdbcClient(registry, prefix);
+		if (useHikariFor(prefix)
+				&& ClassUtils.isPresent("org.crac.Resource", DataSourceAutoConfiguration.class.getClassLoader())) {
+			registerHikariCheckpointRestoreLifecycle(registry, prefix);
 		}
 	}
 
@@ -109,7 +77,7 @@ public class AdditionalJdbcPostProcessor
 			String suffix = DataSourceProperties.class.getSimpleName();
 			if (beanName.endsWith(suffix)) {
 				String prefix = beanName.substring(0, beanName.length() - suffix.length());
-				if (this.names.contains(prefix)) {
+				if (this.prefixes.contains(prefix)) {
 					this.binder.bind(SPRING_DATASOURCE_PREFIX.replace("spring", prefix), Bindable.ofInstance(bean));
 				}
 			}
@@ -118,7 +86,7 @@ public class AdditionalJdbcPostProcessor
 			String suffix = DataSource.class.getSimpleName();
 			if (beanName.endsWith(suffix)) {
 				String prefix = beanName.substring(0, beanName.length() - suffix.length());
-				if (this.names.contains(prefix)) {
+				if (this.prefixes.contains(prefix)) {
 					String type = bean.getClass().getName();
 					String namePrefix = SPRING_DATASOURCE_PREFIX.replace("spring", prefix) + '.';
 					Bindable<?> bindable = Bindable.ofInstance(bean);
@@ -143,7 +111,7 @@ public class AdditionalJdbcPostProcessor
 			String suffix = JdbcProperties.class.getSimpleName();
 			if (beanName.endsWith(suffix)) {
 				String prefix = beanName.substring(0, beanName.length() - suffix.length());
-				if (this.names.contains(prefix)) {
+				if (this.prefixes.contains(prefix)) {
 					this.binder.bind(SPRING_JDBC_PREFIX.replace("spring", prefix), Bindable.ofInstance(bean));
 				}
 			}
@@ -152,7 +120,7 @@ public class AdditionalJdbcPostProcessor
 	}
 
 	private void registerDataSourceProperties(BeanDefinitionRegistry registry, String prefix) {
-		if (!registry.containsBeanDefinition(beanNameFor(DataSourceProperties.class, prefix))) {
+		registerBeanDefinition(registry, DataSourceProperties.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setTargetType(DataSourceProperties.class);
 			beanDefinition.setDefaultCandidate(false);
@@ -164,10 +132,10 @@ public class AdditionalJdbcPostProcessor
 				BeanUtils.copyProperties(defaultRedisProperties, properties);
 				return properties;
 			});
-			registry.registerBeanDefinition(beanNameFor(DataSourceProperties.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 
-		if (!registry.containsBeanDefinition(beanNameFor(JdbcConnectionDetails.class, prefix))) {
+		registerBeanDefinition(registry, JdbcConnectionDetails.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition
@@ -177,12 +145,12 @@ public class AdditionalJdbcPostProcessor
 				.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(DataSourceProperties.class, prefix)));
 			beanDefinition.setConstructorArgumentValues(arguments);
 			beanDefinition.setTargetType(JdbcConnectionDetails.class);
-			registry.registerBeanDefinition(beanNameFor(JdbcConnectionDetails.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 	}
 
 	private void registerJdbcProperties(BeanDefinitionRegistry registry, String prefix) {
-		if (!registry.containsBeanDefinition(beanNameFor(JdbcProperties.class, prefix))) {
+		registerBeanDefinition(registry, JdbcProperties.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setTargetType(JdbcProperties.class);
 			beanDefinition.setDefaultCandidate(false);
@@ -193,12 +161,12 @@ public class AdditionalJdbcPostProcessor
 				BeanUtils.copyProperties(defaultRedisProperties, properties);
 				return properties;
 			});
-			registry.registerBeanDefinition(beanNameFor(JdbcProperties.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 	}
 
 	private void registerDataSource(BeanDefinitionRegistry registry, String prefix) {
-		if (!registry.containsBeanDefinition(beanNameFor(DataSource.class, prefix))) {
+		registerBeanDefinition(registry, DataSource.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setTargetType(DataSource.class);
 			beanDefinition.setDefaultCandidate(false);
@@ -206,12 +174,12 @@ public class AdditionalJdbcPostProcessor
 				.getBean(beanNameFor(DataSourceProperties.class, prefix), DataSourceProperties.class)
 				.initializeDataSourceBuilder()
 				.build());
-			registry.registerBeanDefinition(beanNameFor(DataSource.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 	}
 
 	private void registerDataSourceTransactionManager(BeanDefinitionRegistry registry, String prefix) {
-		if (!registry.containsBeanDefinition(beanNameFor(TransactionManager.class, prefix))) {
+		registerBeanDefinition(registry, TransactionManager.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setTargetType(DataSourceTransactionManager.class);
 			beanDefinition.setDefaultCandidate(false);
@@ -233,13 +201,12 @@ public class AdditionalJdbcPostProcessor
 					throw new RuntimeException(ex);
 				}
 			});
-			registry.registerBeanDefinition(beanNameFor(TransactionManager.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 	}
 
 	private void registerJdbcTemplate(BeanDefinitionRegistry registry, String prefix) {
-
-		if (!registry.containsBeanDefinition(beanNameFor(JdbcTemplate.class, prefix))) {
+		registerBeanDefinition(registry, JdbcTemplate.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(JdbcTemplate.class);
@@ -262,10 +229,10 @@ public class AdditionalJdbcPostProcessor
 					throw new RuntimeException(ex);
 				}
 			});
-			registry.registerBeanDefinition(beanNameFor(JdbcTemplate.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 
-		if (!registry.containsBeanDefinition(beanNameFor(NamedParameterJdbcTemplate.class, prefix))) {
+		registerBeanDefinition(registry, NamedParameterJdbcTemplate.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(NamedParameterJdbcTemplate.class);
@@ -287,12 +254,12 @@ public class AdditionalJdbcPostProcessor
 					throw new RuntimeException(ex);
 				}
 			});
-			registry.registerBeanDefinition(beanNameFor(NamedParameterJdbcTemplate.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 	}
 
 	private void registerJdbcClient(BeanDefinitionRegistry registry, String prefix) {
-		if (!registry.containsBeanDefinition(beanNameFor(JdbcClient.class, prefix))) {
+		registerBeanDefinition(registry, JdbcClient.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(JdbcClient.class);
@@ -309,12 +276,12 @@ public class AdditionalJdbcPostProcessor
 					throw new RuntimeException(ex);
 				}
 			});
-			registry.registerBeanDefinition(beanNameFor(JdbcClient.class, prefix), beanDefinition);
-		}
+			return beanDefinition;
+		});
 	}
 
 	private void registerHikariCheckpointRestoreLifecycle(BeanDefinitionRegistry registry, String prefix) {
-		if (!registry.containsBeanDefinition(beanNameFor(HikariCheckpointRestoreLifecycle.class, prefix))) {
+		registerBeanDefinition(registry, HikariCheckpointRestoreLifecycle.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setBeanClass(HikariCheckpointRestoreLifecycle.class);
@@ -322,9 +289,8 @@ public class AdditionalJdbcPostProcessor
 			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(DataSource.class, prefix)));
 			arguments.addGenericArgumentValue(this.applicationContext);
 			beanDefinition.setConstructorArgumentValues(arguments);
-			registry.registerBeanDefinition(beanNameFor(HikariCheckpointRestoreLifecycle.class, prefix),
-					beanDefinition);
-		}
+			return beanDefinition;
+		});
 	}
 
 	private boolean useHikariFor(String prefix) {
@@ -333,15 +299,6 @@ public class AdditionalJdbcPostProcessor
 				this.environment.getProperty(SPRING_DATASOURCE_PREFIX + suffix));
 		return HIKARI_DATASOURCE_CLASS_NAME.equals(type) || type == null && ClassUtils
 			.isPresent(HIKARI_DATASOURCE_CLASS_NAME, DataSourceAutoConfiguration.class.getClassLoader());
-	}
-
-	private static String beanNameFor(Class<?> beanClass, String prefix) {
-		if (beanClass.getName().startsWith("org.springframework.") || beanClass.getName().startsWith("javax.sql.")) {
-			return prefix + beanClass.getSimpleName();
-		}
-		else {
-			return "%s-%s".formatted(prefix, beanClass.getName());
-		}
 	}
 
 }
