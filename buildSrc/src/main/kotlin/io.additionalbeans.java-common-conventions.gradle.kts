@@ -6,7 +6,11 @@ plugins {
 	id("com.societegenerale.commons.arch-unit-gradle-plugin")
 }
 
-java.sourceCompatibility = JavaVersion.VERSION_21
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
 
 archUnit {
 	if (project.name.endsWith("-bom")) {
