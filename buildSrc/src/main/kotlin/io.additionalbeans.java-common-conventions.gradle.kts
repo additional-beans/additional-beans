@@ -48,22 +48,20 @@ dependencyManagement {
 	}
 }
 
-val integrationTest: SourceSet by sourceSets.creating {
+val integrationTest by sourceSets.creating {
 	compileClasspath += sourceSets.test.get().output
 }
-configurations[integrationTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
+val integrationTestImplementation by configurations.getting {
+	extendsFrom(configurations.testImplementation.get())
+}
 configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
-
-val integrationTestTask = tasks.register<Test>("integrationTest") {
+val integrationTestTask = tasks.register<Test>(integrationTest.name) {
 	description = "Runs integration tests."
-	group = "verification"
-
+	group = tasks.test.get().group
 	testClassesDirs = integrationTest.output.classesDirs
-	classpath = configurations[integrationTest.runtimeClasspathConfigurationName] + integrationTest.output
-
+	classpath = configurations[integrationTest.runtimeClasspathConfigurationName] + sourceSets.test.get().output + integrationTest.output
 	shouldRunAfter(tasks.test)
 }
-
 val integration: String? by rootProject
 if (integration != null) {
 	tasks.check {
@@ -71,13 +69,13 @@ if (integration != null) {
 	}
 }
 
-val mockitoAgent = configurations.create("mockitoAgent")
+val mockitoAgent by configurations.creating
 
 dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
-	"integrationTestImplementation"(project)
-	"integrationTestImplementation"("org.springframework.boot:spring-boot-testcontainers")
-	"integrationTestImplementation"("org.testcontainers:junit-jupiter")
+	integrationTestImplementation(project)
+	integrationTestImplementation("org.springframework.boot:spring-boot-testcontainers")
+	integrationTestImplementation("org.testcontainers:junit-jupiter")
 	checkstyle("""io.spring.javaformat:spring-javaformat-checkstyle:${property("javaformat-plugin.version")}""")
 	mockitoAgent("org.mockito:mockito-core") { isTransitive = false }
 }
