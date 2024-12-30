@@ -36,14 +36,7 @@ import org.springframework.util.ClassUtils;
  */
 public class AdditionalRedisPostProcessor extends AdditionalBeansPostProcessor {
 
-	public static final String KEY_ADDITIONAL_REDIS_PREFIXES = "additional.redis.prefixes";
-
 	private static final String SPRING_DATA_REDIS_PREFIX = "spring.data.redis";
-
-	@Override
-	protected String configurationKeyForPrefixes() {
-		return KEY_ADDITIONAL_REDIS_PREFIXES;
-	}
 
 	@Override
 	protected void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix) {

@@ -22,6 +22,8 @@ import org.springframework.core.env.Environment;
 public abstract class AdditionalBeansPostProcessor
 		implements BeanDefinitionRegistryPostProcessor, BeanPostProcessor, ApplicationContextAware, InitializingBean {
 
+	private static final String KEY_ADDITIONAL_PREFIXES_PATTERN = "additional.%s.prefixes";
+
 	protected ApplicationContext applicationContext;
 
 	protected Environment environment;
@@ -47,7 +49,11 @@ public abstract class AdditionalBeansPostProcessor
 		}
 	}
 
-	protected abstract String configurationKeyForPrefixes();
+	protected String configurationKeyForPrefixes() {
+		String module = getClass().getPackageName();
+		module = module.substring(module.lastIndexOf('.') + 1);
+		return KEY_ADDITIONAL_PREFIXES_PATTERN.formatted(module);
+	}
 
 	@Override
 	public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {

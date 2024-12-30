@@ -31,15 +31,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Yanming Zhou
  */
-@TestPropertySource(properties = { AdditionalJdbcPostProcessor.KEY_ADDITIONAL_JDBC_PREFIXES + "=foo, bar",
-		"spring.datasource.name=spring", "spring.datasource.driver-class-name=org.h2.Driver",
-		"spring.datasource.url=jdbc:h2:mem:default", "spring.datasource.hikari.minimum-idle=10",
-		"spring.datasource.hikari.maximum-pool-size=20", "spring.jdbc.template.fetch-size=100",
-		"spring.jdbc.template.max-rows=1000", "foo.datasource.name=foo", "foo.datasource.url=jdbc:h2:mem:foo",
-		"foo.datasource.hikari.minimum-idle=20", "foo.datasource.hikari.maximum-pool-size=40",
-		"foo.jdbc.template.max-rows=2000", "bar.datasource.name=bar", "bar.datasource.url=jdbc:h2:mem:bar",
-		"bar.datasource.hikari.minimum-idle=30", "bar.datasource.hikari.maximum-pool-size=60",
-		"bar.jdbc.template.max-rows=3000" })
+@TestPropertySource(properties = { "additional.jdbc.prefixes=foo,bar", "spring.datasource.name=spring",
+		"spring.datasource.driver-class-name=org.h2.Driver", "spring.datasource.url=jdbc:h2:mem:default",
+		"spring.datasource.hikari.minimum-idle=10", "spring.datasource.hikari.maximum-pool-size=20",
+		"spring.jdbc.template.fetch-size=100", "spring.jdbc.template.max-rows=1000", "foo.datasource.name=foo",
+		"foo.datasource.url=jdbc:h2:mem:foo", "foo.datasource.hikari.minimum-idle=20",
+		"foo.datasource.hikari.maximum-pool-size=40", "foo.jdbc.template.max-rows=2000", "bar.datasource.name=bar",
+		"bar.datasource.url=jdbc:h2:mem:bar", "bar.datasource.hikari.minimum-idle=30",
+		"bar.datasource.hikari.maximum-pool-size=60", "bar.jdbc.template.max-rows=3000" })
 @ImportAutoConfiguration({ DataSourceAutoConfiguration.class, DataSourceTransactionManagerAutoConfiguration.class,
 		JdbcTemplateAutoConfiguration.class, JdbcClientAutoConfiguration.class, AdditionalJdbcAutoConfiguration.class })
 @SpringJUnitConfig

@@ -38,8 +38,6 @@ import org.springframework.util.StringUtils;
  */
 public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 
-	public static final String KEY_ADDITIONAL_JDBC_PREFIXES = "additional.jdbc.prefixes";
-
 	private static final String SPRING_DATASOURCE_PREFIX = "spring.datasource";
 
 	private static final String SPRING_JDBC_PREFIX = "spring.jdbc";
@@ -51,11 +49,6 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 	private static final String TOMCAT_DATASOURCE_CLASS_NAME = "org.apache.tomcat.jdbc.pool.DataSource";
 
 	private static final String ORACLE_UCP_DATASOURCE_CLASS_NAME = "oracle.ucp.jdbc.PoolDataSourceImpl";
-
-	@Override
-	protected String configurationKeyForPrefixes() {
-		return KEY_ADDITIONAL_JDBC_PREFIXES;
-	}
 
 	@Override
 	protected void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix) {

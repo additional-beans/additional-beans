@@ -21,10 +21,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Yanming Zhou
  */
-@TestPropertySource(properties = { AdditionalRedisPostProcessor.KEY_ADDITIONAL_REDIS_PREFIXES + "=foo, bar",
-		"spring.data.redis.database=1", "spring.data.redis.username=default", "foo.data.redis.database=2",
-		"foo.data.redis.username=foo", "bar.data.redis.database=3", "bar.data.redis.username=bar",
-		"bar.data.redis.client-type=jedis" })
+@TestPropertySource(properties = { "additional.redis.prefixes=foo,bar", "spring.data.redis.database=1",
+		"spring.data.redis.username=default", "foo.data.redis.database=2", "foo.data.redis.username=foo",
+		"bar.data.redis.database=3", "bar.data.redis.username=bar", "bar.data.redis.client-type=jedis" })
 @ImportAutoConfiguration({ RedisAutoConfiguration.class, AdditionalRedisAutoConfiguration.class })
 @SpringJUnitConfig
 class AdditionalRedisAutoConfigurationTests {
