@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -72,8 +73,21 @@ public abstract class AdditionalBeansPostProcessor
 		}
 	}
 
-	public String beanNameFor(Class<?> beanClass, String prefix) {
-		return prefix + beanClass.getSimpleName();
+	protected <T> ObjectProvider<T> beanProviderFor(Class<T> beanClass) {
+		return this.applicationContext.getBeanProvider(beanClass);
+	}
+
+	protected <T> T beanFor(Class<T> beanClass, String prefix) {
+		return this.applicationContext.getBean(beanNameFor(beanClass, prefix), beanClass);
+	}
+
+	protected String beanNameFor(Class<?> beanClass, String prefix) {
+		String name = beanClass.getSimpleName();
+		String classPrefix = "Default";
+		if (name.startsWith(classPrefix)) {
+			name = name.substring(classPrefix.length());
+		}
+		return prefix + name;
 	}
 
 }

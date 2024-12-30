@@ -107,15 +107,11 @@ public class AdditionalRedisPostProcessor extends AdditionalBeansPostProcessor {
 						RedisAutoConfiguration.class.getClassLoader());
 				Constructor<?> ctor = configurationClass.getDeclaredConstructors()[0];
 				ctor.setAccessible(true);
-				return ctor.newInstance(
-						this.applicationContext.getBean(prefix + RedisProperties.class.getSimpleName(),
-								RedisProperties.class),
-						this.applicationContext.getBeanProvider(RedisStandaloneConfiguration.class),
-						this.applicationContext.getBeanProvider(RedisSentinelConfiguration.class),
-						this.applicationContext.getBeanProvider(RedisClusterConfiguration.class),
-						this.applicationContext.getBean(beanNameFor(RedisConnectionDetails.class, prefix),
-								RedisConnectionDetails.class),
-						this.applicationContext.getBeanProvider(SslBundles.class));
+				return ctor.newInstance(beanFor(RedisProperties.class, prefix),
+						beanProviderFor(RedisStandaloneConfiguration.class),
+						beanProviderFor(RedisSentinelConfiguration.class),
+						beanProviderFor(RedisClusterConfiguration.class), beanFor(RedisConnectionDetails.class, prefix),
+						beanProviderFor(SslBundles.class));
 			}
 			catch (Exception ex) {
 				throw new RuntimeException(ex);
@@ -136,7 +132,7 @@ public class AdditionalRedisPostProcessor extends AdditionalBeansPostProcessor {
 						.getDeclaredMethod("lettuceClientResources", ObjectProvider.class);
 					method.setAccessible(true);
 					return method.invoke(connectionConfiguration,
-							this.applicationContext.getBeanProvider(ClientResourcesBuilderCustomizer.class));
+							beanProviderFor(ClientResourcesBuilderCustomizer.class));
 				}
 				catch (Exception ex) {
 					throw new RuntimeException(ex);
@@ -156,7 +152,7 @@ public class AdditionalRedisPostProcessor extends AdditionalBeansPostProcessor {
 						.getDeclaredMethod("redisConnectionFactory", ObjectProvider.class);
 					method.setAccessible(true);
 					return method.invoke(connectionConfiguration,
-							this.applicationContext.getBeanProvider(JedisClientConfigurationBuilderCustomizer.class));
+							beanProviderFor(JedisClientConfigurationBuilderCustomizer.class));
 				}
 				else {
 					Method method = connectionConfiguration.getClass()
@@ -164,10 +160,9 @@ public class AdditionalRedisPostProcessor extends AdditionalBeansPostProcessor {
 								ClientResources.class);
 					method.setAccessible(true);
 					return method.invoke(connectionConfiguration,
-							this.applicationContext.getBeanProvider(LettuceClientConfigurationBuilderCustomizer.class),
-							this.applicationContext.getBeanProvider(LettuceClientOptionsBuilderCustomizer.class),
-							this.applicationContext.getBean(beanNameFor(ClientResources.class, prefix),
-									ClientResources.class));
+							beanProviderFor(LettuceClientConfigurationBuilderCustomizer.class),
+							beanProviderFor(LettuceClientOptionsBuilderCustomizer.class),
+							beanFor(ClientResources.class, prefix));
 				}
 
 			}
@@ -186,8 +181,8 @@ public class AdditionalRedisPostProcessor extends AdditionalBeansPostProcessor {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(RedisTemplate.class);
-			beanDefinition.setInstanceSupplier(() -> redisAutoConfiguration.redisTemplate(this.applicationContext
-				.getBean(prefix + RedisConnectionFactory.class.getSimpleName(), RedisConnectionFactory.class)));
+			beanDefinition.setInstanceSupplier(
+					() -> redisAutoConfiguration.redisTemplate(beanFor(RedisConnectionFactory.class, prefix)));
 			return beanDefinition;
 		});
 
@@ -195,8 +190,8 @@ public class AdditionalRedisPostProcessor extends AdditionalBeansPostProcessor {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(StringRedisTemplate.class);
-			beanDefinition.setInstanceSupplier(() -> redisAutoConfiguration.stringRedisTemplate(this.applicationContext
-				.getBean(prefix + RedisConnectionFactory.class.getSimpleName(), RedisConnectionFactory.class)));
+			beanDefinition.setInstanceSupplier(
+					() -> redisAutoConfiguration.stringRedisTemplate(beanFor(RedisConnectionFactory.class, prefix)));
 			return beanDefinition;
 		});
 	}

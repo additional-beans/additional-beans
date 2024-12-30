@@ -163,10 +163,8 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setTargetType(DataSource.class);
 			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setInstanceSupplier(() -> this.applicationContext
-				.getBean(beanNameFor(DataSourceProperties.class, prefix), DataSourceProperties.class)
-				.initializeDataSourceBuilder()
-				.build());
+			beanDefinition.setInstanceSupplier(
+					() -> beanFor(DataSourceProperties.class, prefix).initializeDataSourceBuilder().build());
 			return beanDefinition;
 		});
 	}
@@ -186,9 +184,8 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 					Method method = jdbcTransactionManagerConfiguration.getDeclaredMethod("transactionManager",
 							Environment.class, DataSource.class, ObjectProvider.class);
 					method.setAccessible(true);
-					return method.invoke(configuration, this.environment,
-							this.applicationContext.getBean(beanNameFor(DataSource.class, prefix), DataSource.class),
-							this.applicationContext.getBeanProvider(TransactionManagerCustomizers.class));
+					return method.invoke(configuration, this.environment, beanFor(DataSource.class, prefix),
+							beanProviderFor(TransactionManagerCustomizers.class));
 				}
 				catch (Exception ex) {
 					throw new RuntimeException(ex);
@@ -213,10 +210,8 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 					Object configuration = ctor.newInstance();
 					Method method = clazz.getDeclaredMethod("jdbcTemplate", DataSource.class, JdbcProperties.class);
 					method.setAccessible(true);
-					return method.invoke(configuration,
-							this.applicationContext.getBean(beanNameFor(DataSource.class, prefix), DataSource.class),
-							this.applicationContext.getBean(beanNameFor(JdbcProperties.class, prefix),
-									JdbcProperties.class));
+					return method.invoke(configuration, beanFor(DataSource.class, prefix),
+							beanFor(JdbcProperties.class, prefix));
 				}
 				catch (Exception ex) {
 					throw new RuntimeException(ex);
@@ -240,8 +235,7 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 					Object configuration = ctor.newInstance();
 					Method method = clazz.getDeclaredMethod("namedParameterJdbcTemplate", JdbcTemplate.class);
 					method.setAccessible(true);
-					return method.invoke(configuration, this.applicationContext
-						.getBean(beanNameFor(JdbcTemplate.class, prefix), JdbcTemplate.class));
+					return method.invoke(configuration, beanFor(JdbcTemplate.class, prefix));
 				}
 				catch (Exception ex) {
 					throw new RuntimeException(ex);
@@ -262,8 +256,7 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 					Method method = JdbcClientAutoConfiguration.class.getDeclaredMethod("jdbcClient",
 							NamedParameterJdbcTemplate.class);
 					method.setAccessible(true);
-					return method.invoke(configuration, this.applicationContext.getBean(
-							beanNameFor(NamedParameterJdbcTemplate.class, prefix), NamedParameterJdbcTemplate.class));
+					return method.invoke(configuration, beanFor(NamedParameterJdbcTemplate.class, prefix));
 				}
 				catch (Exception ex) {
 					throw new RuntimeException(ex);
