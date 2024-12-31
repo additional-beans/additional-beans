@@ -135,3 +135,63 @@ And you can inject beans using `@Qualifier` as following:
 	@Qualifier("barJdbcClient")
 	private JdbcClient barJdbcClient;
 ----
+
+=== Additional kafka beans
+
+Add dependency:
+[source,kotlin]
+----
+implementation("io.additionalbeans:additional-beans-kafka-spring-boot-starter")
+----
+
+Then you can configure it as following:
+[source,yaml]
+----
+# primary redis service
+spring.kafka:
+  bootstrap-servers: localhost:9092
+  client-id: default
+
+additional.redis.prefixes: [foo, bar]
+foo.data.redis:
+  client-id: foo
+bar.data.redis:
+  client-id: bar
+----
+
+And you can inject beans using `@Qualifier` as following:
+[source,java]
+----
+
+	@Autowired
+	@Qualifier("fooKafkaProducerFactory")
+	private DefaultKafkaProducerFactory<?, ?> fooKafkaProducerFactory;
+
+	@Autowired
+	@Qualifier("barKafkaProducerFactory")
+	private DefaultKafkaProducerFactory<?, ?> barKafkaProducerFactory;
+
+	@Autowired
+	@Qualifier("fooKafkaConsumerFactory")
+	private DefaultKafkaConsumerFactory<?, ?> fooKafkaConsumerFactory;
+
+	@Autowired
+	@Qualifier("barKafkaConsumerFactory")
+	private DefaultKafkaConsumerFactory<?, ?> barKafkaConsumerFactory;
+
+	@Autowired
+	@Qualifier("fooKafkaTemplate")
+	private KafkaTemplate<?, ?> fooKafkaTemplate;
+
+	@Autowired
+	@Qualifier("barKafkaTemplate")
+	private KafkaTemplate<?, ?> barKafkaTemplate;
+
+	@Autowired
+	@Qualifier("fooKafkaAdmin")
+	private KafkaAdmin fooKafkaAdmin;
+
+	@Autowired
+	@Qualifier("barKafkaAdmin")
+	private KafkaAdmin barKafkaAdmin;
+----
