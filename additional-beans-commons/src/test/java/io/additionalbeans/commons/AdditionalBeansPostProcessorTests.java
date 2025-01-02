@@ -17,15 +17,15 @@ class AdditionalBeansPostProcessorTests {
 	AdditionalBeansPostProcessor<RedisProperties, RedisConnectionDetails> processor = new AdditionalBeansPostProcessor<>() {
 
 		@Override
-		protected void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix) {
+		protected void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix) {
 
 		}
 	};
 
 	@Test
-	void testBeanNameForPrefix() {
-		assertThat(this.processor.beanNameForPrefix(RedisProperties.class, "test")).isEqualTo("testRedisProperties");
-		assertThat(this.processor.beanNameForPrefix(DefaultBeanNameGenerator.class, "test"))
+	void testBeanNameFor() {
+		assertThat(this.processor.beanNameFor(RedisProperties.class, "test")).isEqualTo("testRedisProperties");
+		assertThat(this.processor.beanNameFor(DefaultBeanNameGenerator.class, "test"))
 			.isEqualTo("testBeanNameGenerator");
 	}
 

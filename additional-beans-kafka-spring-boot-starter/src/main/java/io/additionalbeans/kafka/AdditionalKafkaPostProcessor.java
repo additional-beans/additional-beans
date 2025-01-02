@@ -28,7 +28,7 @@ public class AdditionalKafkaPostProcessor
 		extends AdditionalBeansPostProcessor<KafkaProperties, KafkaConnectionDetails> {
 
 	@Override
-	protected void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix) {
+	protected void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix) {
 		registerKafkaAutoConfiguration(registry, prefix);
 		registerKafkaProducerFactory(registry, prefix);
 		registerKafkaProducerListener(registry, prefix);
@@ -49,8 +49,7 @@ public class AdditionalKafkaPostProcessor
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setBeanClass(KafkaAutoConfiguration.class);
 			ConstructorArgumentValues arguments = new ConstructorArgumentValues();
-			arguments
-				.addGenericArgumentValue(new RuntimeBeanReference(beanNameForPrefix(KafkaProperties.class, prefix)));
+			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(KafkaProperties.class, prefix)));
 			beanDefinition.setConstructorArgumentValues(arguments);
 			return beanDefinition;
 		});
@@ -58,49 +57,47 @@ public class AdditionalKafkaPostProcessor
 
 	private void registerKafkaProducerFactory(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanInstanceSupplier(registry, DefaultKafkaProducerFactory.class, prefix,
-				() -> beanForPrefix(KafkaAutoConfiguration.class, prefix).kafkaProducerFactory(
-						beanForPrefix(KafkaConnectionDetails.class, prefix),
-						beanProviderFor(DefaultKafkaProducerFactoryCustomizer.class),
-						beanProviderFor(SslBundles.class)));
+				() -> beanFor(KafkaAutoConfiguration.class, prefix).kafkaProducerFactory(
+						beanFor(KafkaConnectionDetails.class, prefix),
+						beanProviderOf(DefaultKafkaProducerFactoryCustomizer.class), beanProviderOf(SslBundles.class)));
 	}
 
 	private void registerKafkaProducerListener(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanInstanceSupplier(registry, ProducerListener.class, prefix,
-				() -> beanForPrefix(KafkaAutoConfiguration.class, prefix).kafkaProducerListener());
+				() -> beanFor(KafkaAutoConfiguration.class, prefix).kafkaProducerListener());
 	}
 
 	private void registerKafkaConsumerFactory(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanInstanceSupplier(registry, DefaultKafkaConsumerFactory.class, prefix,
-				() -> beanForPrefix(KafkaAutoConfiguration.class, prefix).kafkaConsumerFactory(
-						beanForPrefix(KafkaConnectionDetails.class, prefix),
-						beanProviderFor(DefaultKafkaConsumerFactoryCustomizer.class),
-						beanProviderFor(SslBundles.class)));
+				() -> beanFor(KafkaAutoConfiguration.class, prefix).kafkaConsumerFactory(
+						beanFor(KafkaConnectionDetails.class, prefix),
+						beanProviderOf(DefaultKafkaConsumerFactoryCustomizer.class), beanProviderOf(SslBundles.class)));
 	}
 
 	@SuppressWarnings("unchecked")
 	private void registerKafkaTemplate(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanInstanceSupplier(registry, KafkaTemplate.class, prefix,
-				() -> beanForPrefix(KafkaAutoConfiguration.class, prefix).kafkaTemplate(
-						beanForPrefix(DefaultKafkaProducerFactory.class, prefix),
-						beanForPrefix(ProducerListener.class, prefix), beanProviderFor(RecordMessageConverter.class)));
+				() -> beanFor(KafkaAutoConfiguration.class, prefix).kafkaTemplate(
+						beanFor(DefaultKafkaProducerFactory.class, prefix), beanFor(ProducerListener.class, prefix),
+						beanProviderOf(RecordMessageConverter.class)));
 	}
 
 	private void registerKafkaAdmin(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanInstanceSupplier(registry, KafkaAdmin.class, prefix,
-				() -> beanForPrefix(KafkaAutoConfiguration.class, prefix).kafkaAdmin(
-						beanForPrefix(KafkaConnectionDetails.class, prefix), beanProviderFor(SslBundles.class)));
+				() -> beanFor(KafkaAutoConfiguration.class, prefix)
+					.kafkaAdmin(beanFor(KafkaConnectionDetails.class, prefix), beanProviderOf(SslBundles.class)));
 	}
 
 	private void registerKafkaTransactionManager(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanInstanceSupplier(registry, KafkaTransactionManager.class, prefix,
-				() -> beanForPrefix(KafkaAutoConfiguration.class, prefix)
-					.kafkaTransactionManager(beanForPrefix(DefaultKafkaProducerFactory.class, prefix)));
+				() -> beanFor(KafkaAutoConfiguration.class, prefix)
+					.kafkaTransactionManager(beanFor(DefaultKafkaProducerFactory.class, prefix)));
 	}
 
 	private void registerKafkaRetryTopicConfiguration(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanInstanceSupplier(registry, RetryTopicConfiguration.class, prefix,
-				() -> beanForPrefix(KafkaAutoConfiguration.class, prefix)
-					.kafkaRetryTopicConfiguration(beanForPrefix(KafkaTemplate.class, prefix)));
+				() -> beanFor(KafkaAutoConfiguration.class, prefix)
+					.kafkaRetryTopicConfiguration(beanFor(KafkaTemplate.class, prefix)));
 	}
 
 }

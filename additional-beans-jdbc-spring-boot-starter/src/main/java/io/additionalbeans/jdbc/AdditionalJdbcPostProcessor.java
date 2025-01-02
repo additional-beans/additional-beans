@@ -49,7 +49,7 @@ public class AdditionalJdbcPostProcessor
 	private static final String ORACLE_UCP_DATASOURCE_CLASS_NAME = "oracle.ucp.jdbc.PoolDataSourceImpl";
 
 	@Override
-	protected void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix) {
+	protected void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix) {
 		registerDataSource(registry, prefix);
 		registerDataSourceTransactionManager(registry, prefix);
 		registerJdbcProperties(registry, prefix);
@@ -113,7 +113,7 @@ public class AdditionalJdbcPostProcessor
 
 	private void registerDataSource(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanInstanceSupplier(registry, DataSource.class, prefix,
-				() -> beanForPrefix(DataSourceProperties.class, prefix).initializeDataSourceBuilder().build());
+				() -> beanFor(DataSourceProperties.class, prefix).initializeDataSourceBuilder().build());
 	}
 
 	private void registerDataSourceTransactionManager(BeanDefinitionRegistry registry, String prefix) {
@@ -128,7 +128,7 @@ public class AdditionalJdbcPostProcessor
 						Environment.class, DataSource.class, ObjectProvider.class);
 				method.setAccessible(true);
 				return (TransactionManager) method.invoke(configuration, this.environment,
-						beanForPrefix(DataSource.class, prefix), beanProviderFor(TransactionManagerCustomizers.class));
+						beanFor(DataSource.class, prefix), beanProviderOf(TransactionManagerCustomizers.class));
 			}
 			catch (Exception ex) {
 				throw new RuntimeException(ex);
@@ -147,8 +147,8 @@ public class AdditionalJdbcPostProcessor
 				Object configuration = ctor.newInstance();
 				Method method = clazz.getDeclaredMethod("jdbcTemplate", DataSource.class, JdbcProperties.class);
 				method.setAccessible(true);
-				return (JdbcTemplate) method.invoke(configuration, beanForPrefix(DataSource.class, prefix),
-						beanForPrefix(JdbcProperties.class, prefix));
+				return (JdbcTemplate) method.invoke(configuration, beanFor(DataSource.class, prefix),
+						beanFor(JdbcProperties.class, prefix));
 			}
 			catch (Exception ex) {
 				throw new RuntimeException(ex);
@@ -165,8 +165,7 @@ public class AdditionalJdbcPostProcessor
 				Object configuration = ctor.newInstance();
 				Method method = clazz.getDeclaredMethod("namedParameterJdbcTemplate", JdbcTemplate.class);
 				method.setAccessible(true);
-				return (NamedParameterJdbcTemplate) method.invoke(configuration,
-						beanForPrefix(JdbcTemplate.class, prefix));
+				return (NamedParameterJdbcTemplate) method.invoke(configuration, beanFor(JdbcTemplate.class, prefix));
 			}
 			catch (Exception ex) {
 				throw new RuntimeException(ex);
@@ -181,8 +180,7 @@ public class AdditionalJdbcPostProcessor
 				Method method = JdbcClientAutoConfiguration.class.getDeclaredMethod("jdbcClient",
 						NamedParameterJdbcTemplate.class);
 				method.setAccessible(true);
-				return (JdbcClient) method.invoke(configuration,
-						beanForPrefix(NamedParameterJdbcTemplate.class, prefix));
+				return (JdbcClient) method.invoke(configuration, beanFor(NamedParameterJdbcTemplate.class, prefix));
 			}
 			catch (Exception ex) {
 				throw new RuntimeException(ex);
@@ -194,7 +192,7 @@ public class AdditionalJdbcPostProcessor
 		registerBeanDefinition(registry, HikariCheckpointRestoreLifecycle.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			ConstructorArgumentValues arguments = new ConstructorArgumentValues();
-			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameForPrefix(DataSource.class, prefix)));
+			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(DataSource.class, prefix)));
 			arguments.addGenericArgumentValue(this.applicationContext);
 			beanDefinition.setConstructorArgumentValues(arguments);
 			return beanDefinition;

@@ -33,14 +33,14 @@ public class AdditionalRedisPostProcessor
 		extends AdditionalBeansPostProcessor<RedisProperties, RedisConnectionDetails> {
 
 	@Override
-	protected void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix) {
+	protected void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix) {
 		registerRedisConnectionFactory(registry, prefix);
 		registerRedisTemplate(registry, prefix);
 	}
 
 	private void registerRedisConnectionFactory(BeanDefinitionRegistry registry, String prefix) {
 
-		if (registry.containsBeanDefinition(beanNameForPrefix(RedisConnectionFactory.class, prefix))) {
+		if (registry.containsBeanDefinition(beanNameFor(RedisConnectionFactory.class, prefix))) {
 			return;
 		}
 		boolean useJedis = useJedisFor(prefix);
@@ -57,11 +57,11 @@ public class AdditionalRedisPostProcessor
 						RedisAutoConfiguration.class.getClassLoader());
 				Constructor<?> ctor = configurationClass.getDeclaredConstructors()[0];
 				ctor.setAccessible(true);
-				return ctor.newInstance(beanForPrefix(RedisProperties.class, prefix),
-						beanProviderFor(RedisStandaloneConfiguration.class),
-						beanProviderFor(RedisSentinelConfiguration.class),
-						beanProviderFor(RedisClusterConfiguration.class),
-						beanForPrefix(RedisConnectionDetails.class, prefix), beanProviderFor(SslBundles.class));
+				return ctor.newInstance(beanFor(RedisProperties.class, prefix),
+						beanProviderOf(RedisStandaloneConfiguration.class),
+						beanProviderOf(RedisSentinelConfiguration.class),
+						beanProviderOf(RedisClusterConfiguration.class), beanFor(RedisConnectionDetails.class, prefix),
+						beanProviderOf(SslBundles.class));
 			}
 			catch (Exception ex) {
 				throw new RuntimeException(ex);
@@ -81,7 +81,7 @@ public class AdditionalRedisPostProcessor
 							.getDeclaredMethod("lettuceClientResources", ObjectProvider.class);
 						method.setAccessible(true);
 						return method.invoke(connectionConfiguration,
-								beanProviderFor(ClientResourcesBuilderCustomizer.class));
+								beanProviderOf(ClientResourcesBuilderCustomizer.class));
 					}
 					catch (Exception ex) {
 						throw new RuntimeException(ex);
@@ -100,7 +100,7 @@ public class AdditionalRedisPostProcessor
 						.getDeclaredMethod("redisConnectionFactory", ObjectProvider.class);
 					method.setAccessible(true);
 					return (RedisConnectionFactory) method.invoke(connectionConfiguration,
-							beanProviderFor(JedisClientConfigurationBuilderCustomizer.class));
+							beanProviderOf(JedisClientConfigurationBuilderCustomizer.class));
 				}
 				else {
 					Method method = connectionConfiguration.getClass()
@@ -108,9 +108,9 @@ public class AdditionalRedisPostProcessor
 								ClientResources.class);
 					method.setAccessible(true);
 					return (RedisConnectionFactory) method.invoke(connectionConfiguration,
-							beanProviderFor(LettuceClientConfigurationBuilderCustomizer.class),
-							beanProviderFor(LettuceClientOptionsBuilderCustomizer.class),
-							beanForPrefix(ClientResources.class, prefix));
+							beanProviderOf(LettuceClientConfigurationBuilderCustomizer.class),
+							beanProviderOf(LettuceClientOptionsBuilderCustomizer.class),
+							beanFor(ClientResources.class, prefix));
 				}
 
 			}
@@ -125,10 +125,10 @@ public class AdditionalRedisPostProcessor
 		RedisAutoConfiguration redisAutoConfiguration = new RedisAutoConfiguration();
 
 		registerBeanInstanceSupplier(registry, RedisTemplate.class, prefix,
-				() -> redisAutoConfiguration.redisTemplate(beanForPrefix(RedisConnectionFactory.class, prefix)));
+				() -> redisAutoConfiguration.redisTemplate(beanFor(RedisConnectionFactory.class, prefix)));
 
 		registerBeanInstanceSupplier(registry, StringRedisTemplate.class, prefix,
-				() -> redisAutoConfiguration.stringRedisTemplate(beanForPrefix(RedisConnectionFactory.class, prefix)));
+				() -> redisAutoConfiguration.stringRedisTemplate(beanFor(RedisConnectionFactory.class, prefix)));
 	}
 
 	private boolean useJedisFor(String prefix) {

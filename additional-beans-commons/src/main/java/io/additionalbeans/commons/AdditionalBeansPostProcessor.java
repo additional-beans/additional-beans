@@ -104,14 +104,14 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 	@Override
 	public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
 		for (String prefix : this.prefixes) {
-			registerConfigurationPropertiesForPrefix(registry, prefix);
-			registerBeanDefinitionsForPrefix(registry, prefix);
+			registerConfigurationProperties(registry, prefix);
+			registerBeanDefinitions(registry, prefix);
 		}
 	}
 
-	protected abstract void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix);
+	protected abstract void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix);
 
-	protected void registerConfigurationPropertiesForPrefix(BeanDefinitionRegistry registry, String prefix) {
+	protected void registerConfigurationProperties(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanInstanceSupplier(registry, this.configurationPropertiesClass, prefix, () -> {
 			try {
 				CP properties = this.configurationPropertiesClass.getConstructor().newInstance();
@@ -134,7 +134,7 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 				beanDefinition.setBeanClassName(propertiesConnectionDetailsClassName);
 				ConstructorArgumentValues arguments = new ConstructorArgumentValues();
 				arguments.addGenericArgumentValue(
-						new RuntimeBeanReference(beanNameForPrefix(this.configurationPropertiesClass, prefix)));
+						new RuntimeBeanReference(beanNameFor(this.configurationPropertiesClass, prefix)));
 				beanDefinition.setConstructorArgumentValues(arguments);
 				return beanDefinition;
 			});
@@ -143,7 +143,7 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 
 	protected <T> void registerBeanDefinition(BeanDefinitionRegistry registry, Class<T> beanClass, String prefix,
 			Supplier<RootBeanDefinition> beanDefinitionSupplier) {
-		String beanName = beanNameForPrefix(beanClass, prefix);
+		String beanName = beanNameFor(beanClass, prefix);
 		if (!registry.containsBeanDefinition(beanName)) {
 			RootBeanDefinition bd = beanDefinitionSupplier.get();
 			bd.setDefaultCandidate(false);
@@ -163,15 +163,15 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 		});
 	}
 
-	protected <T> ObjectProvider<T> beanProviderFor(Class<T> beanClass) {
+	protected <T> ObjectProvider<T> beanProviderOf(Class<T> beanClass) {
 		return this.applicationContext.getBeanProvider(beanClass);
 	}
 
-	protected <T> T beanForPrefix(Class<T> beanClass, String prefix) {
-		return this.applicationContext.getBean(beanNameForPrefix(beanClass, prefix), beanClass);
+	protected <T> T beanFor(Class<T> beanClass, String prefix) {
+		return this.applicationContext.getBean(beanNameFor(beanClass, prefix), beanClass);
 	}
 
-	protected String beanNameForPrefix(Class<?> beanClass, String prefix) {
+	protected String beanNameFor(Class<?> beanClass, String prefix) {
 		String name = beanClass.getSimpleName();
 		String classPrefix = "Default";
 		if (name.startsWith(classPrefix)) {
