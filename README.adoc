@@ -195,3 +195,56 @@ And you can inject beans using `@Qualifier` as following:
 	@Qualifier("barKafkaAdmin")
 	private KafkaAdmin barKafkaAdmin;
 ----
+
+=== Additional MongoDB beans
+
+Add dependency:
+[source,kotlin]
+----
+implementation("io.additionalbeans:additional-beans-mongodb-spring-boot-starter")
+----
+
+Then you can configure it as following:
+[source,yaml]
+----
+# primary redis service
+spring.data.mongodb:
+  host: 127.0.0.1
+  port: 27017
+
+additional.mongodb.prefixes: [foo, bar]
+foo.data.mongodb:
+  port: 27018
+  database: foo
+bar.data.mongodb:
+  port: 27019
+  database: bar
+----
+
+And you can inject beans using `@Qualifier` as following:
+[source,java]
+----
+	@Autowired
+	@Qualifier("fooMongoClient")
+	private MongoClient fooMongoClient;
+
+	@Autowired
+	@Qualifier("barMongoClient")
+	private MongoClient barMongoClient;
+
+	@Autowired
+	@Qualifier("fooMongoDatabaseFactory")
+	private MongoDatabaseFactory fooMongoDatabaseFactory;
+
+	@Autowired
+	@Qualifier("barMongoDatabaseFactory")
+	private MongoDatabaseFactory barMongoDatabaseFactory;
+
+	@Autowired
+	@Qualifier("fooMongoTemplate")
+	private MongoTemplate fooMongoTemplate;
+
+	@Autowired
+	@Qualifier("barMongoTemplate")
+	private MongoTemplate barMongoTemplate;
+----
