@@ -8,7 +8,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
@@ -113,26 +112,18 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 	protected abstract void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix);
 
 	protected void registerConfigurationPropertiesForPrefix(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanDefinition(registry, this.configurationPropertiesClass, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setTargetType(this.configurationPropertiesClass);
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setInstanceSupplier(() -> {
-				try {
-					CP properties = this.configurationPropertiesClass.getConstructor().newInstance();
-					CP defaultProperties = this.applicationContext
-						.getBean(
-								"%s-%s".formatted(this.defaultConfigurationPropertiesPrefix,
-										this.configurationPropertiesClass.getName()),
-								this.configurationPropertiesClass);
-					BeanUtils.copyProperties(defaultProperties, properties);
-					return properties;
-				}
-				catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			});
-			return beanDefinition;
+		registerBeanInstanceSupplier(registry, this.configurationPropertiesClass, prefix, () -> {
+			try {
+				CP properties = this.configurationPropertiesClass.getConstructor().newInstance();
+				CP defaultProperties = this.applicationContext.getBean("%s-%s"
+					.formatted(this.defaultConfigurationPropertiesPrefix, this.configurationPropertiesClass.getName()),
+						this.configurationPropertiesClass);
+				BeanUtils.copyProperties(defaultProperties, properties);
+				return properties;
+			}
+			catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
 		});
 
 		String propertiesConnectionDetailsClassName = this.connectionDetailsClass.getPackageName() + ".Properties"
@@ -140,24 +131,36 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 		if (ClassUtils.isPresent(propertiesConnectionDetailsClassName, this.connectionDetailsClass.getClassLoader())) {
 			registerBeanDefinition(registry, this.connectionDetailsClass, prefix, () -> {
 				RootBeanDefinition beanDefinition = new RootBeanDefinition();
-				beanDefinition.setDefaultCandidate(false);
 				beanDefinition.setBeanClassName(propertiesConnectionDetailsClassName);
 				ConstructorArgumentValues arguments = new ConstructorArgumentValues();
 				arguments.addGenericArgumentValue(
 						new RuntimeBeanReference(beanNameForPrefix(this.configurationPropertiesClass, prefix)));
 				beanDefinition.setConstructorArgumentValues(arguments);
-				beanDefinition.setTargetType(this.connectionDetailsClass);
 				return beanDefinition;
 			});
 		}
 	}
 
 	protected <T> void registerBeanDefinition(BeanDefinitionRegistry registry, Class<T> beanClass, String prefix,
-			Supplier<BeanDefinition> beanDefinitionSupplier) {
+			Supplier<RootBeanDefinition> beanDefinitionSupplier) {
 		String beanName = beanNameForPrefix(beanClass, prefix);
 		if (!registry.containsBeanDefinition(beanName)) {
-			registry.registerBeanDefinition(beanName, beanDefinitionSupplier.get());
+			RootBeanDefinition bd = beanDefinitionSupplier.get();
+			bd.setDefaultCandidate(false);
+			if (bd.getTargetType() == null) {
+				bd.setTargetType(beanClass);
+			}
+			registry.registerBeanDefinition(beanName, bd);
 		}
+	}
+
+	protected <T> void registerBeanInstanceSupplier(BeanDefinitionRegistry registry, Class<T> beanClass, String prefix,
+			Supplier<T> instanceSupplier) {
+		this.registerBeanDefinition(registry, beanClass, prefix, () -> {
+			RootBeanDefinition beanDefinition = new RootBeanDefinition();
+			beanDefinition.setInstanceSupplier(instanceSupplier);
+			return beanDefinition;
+		});
 	}
 
 	protected <T> ObjectProvider<T> beanProviderFor(Class<T> beanClass) {

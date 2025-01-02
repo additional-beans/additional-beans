@@ -28,7 +28,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionManager;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
@@ -103,134 +102,97 @@ public class AdditionalJdbcPostProcessor
 	}
 
 	private void registerJdbcProperties(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanDefinition(registry, JdbcProperties.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setTargetType(JdbcProperties.class);
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setInstanceSupplier(() -> {
-				JdbcProperties properties = new JdbcProperties();
-				JdbcProperties defaultRedisProperties = this.applicationContext.getBean(
-						"%s-%s".formatted(SPRING_JDBC_PREFIX, JdbcProperties.class.getName()), JdbcProperties.class);
-				BeanUtils.copyProperties(defaultRedisProperties, properties);
-				return properties;
-			});
-			return beanDefinition;
+		registerBeanInstanceSupplier(registry, JdbcProperties.class, prefix, () -> {
+			JdbcProperties properties = new JdbcProperties();
+			JdbcProperties defaultRedisProperties = this.applicationContext
+				.getBean("%s-%s".formatted(SPRING_JDBC_PREFIX, JdbcProperties.class.getName()), JdbcProperties.class);
+			BeanUtils.copyProperties(defaultRedisProperties, properties);
+			return properties;
 		});
 	}
 
 	private void registerDataSource(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanDefinition(registry, DataSource.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setTargetType(DataSource.class);
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setInstanceSupplier(
-					() -> beanForPrefix(DataSourceProperties.class, prefix).initializeDataSourceBuilder().build());
-			return beanDefinition;
-		});
+		registerBeanInstanceSupplier(registry, DataSource.class, prefix,
+				() -> beanForPrefix(DataSourceProperties.class, prefix).initializeDataSourceBuilder().build());
 	}
 
 	private void registerDataSourceTransactionManager(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanDefinition(registry, TransactionManager.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setTargetType(DataSourceTransactionManager.class);
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setInstanceSupplier(() -> {
-				try {
-					Class<?> jdbcTransactionManagerConfiguration = DataSourceTransactionManagerAutoConfiguration.class
-						.getDeclaredClasses()[0];
-					Constructor<?> ctor = jdbcTransactionManagerConfiguration.getDeclaredConstructor();
-					ctor.setAccessible(true);
-					Object configuration = ctor.newInstance();
-					Method method = jdbcTransactionManagerConfiguration.getDeclaredMethod("transactionManager",
-							Environment.class, DataSource.class, ObjectProvider.class);
-					method.setAccessible(true);
-					return method.invoke(configuration, this.environment, beanForPrefix(DataSource.class, prefix),
-							beanProviderFor(TransactionManagerCustomizers.class));
-				}
-				catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			});
-			return beanDefinition;
+		registerBeanInstanceSupplier(registry, TransactionManager.class, prefix, () -> {
+			try {
+				Class<?> jdbcTransactionManagerConfiguration = DataSourceTransactionManagerAutoConfiguration.class
+					.getDeclaredClasses()[0];
+				Constructor<?> ctor = jdbcTransactionManagerConfiguration.getDeclaredConstructor();
+				ctor.setAccessible(true);
+				Object configuration = ctor.newInstance();
+				Method method = jdbcTransactionManagerConfiguration.getDeclaredMethod("transactionManager",
+						Environment.class, DataSource.class, ObjectProvider.class);
+				method.setAccessible(true);
+				return (TransactionManager) method.invoke(configuration, this.environment,
+						beanForPrefix(DataSource.class, prefix), beanProviderFor(TransactionManagerCustomizers.class));
+			}
+			catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
 		});
 	}
 
 	private void registerJdbcTemplate(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanDefinition(registry, JdbcTemplate.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setTargetType(JdbcTemplate.class);
-			beanDefinition.setInstanceSupplier(() -> {
-				try {
-					Class<?> clazz = ClassUtils.forName(
-							DataSourceAutoConfiguration.class.getPackageName() + ".JdbcTemplateConfiguration",
-							DataSourceAutoConfiguration.class.getClassLoader());
-					Constructor<?> ctor = clazz.getDeclaredConstructor();
-					ctor.setAccessible(true);
-					Object configuration = ctor.newInstance();
-					Method method = clazz.getDeclaredMethod("jdbcTemplate", DataSource.class, JdbcProperties.class);
-					method.setAccessible(true);
-					return method.invoke(configuration, beanForPrefix(DataSource.class, prefix),
-							beanForPrefix(JdbcProperties.class, prefix));
-				}
-				catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			});
-			return beanDefinition;
+		registerBeanInstanceSupplier(registry, JdbcTemplate.class, prefix, () -> {
+			try {
+				Class<?> clazz = ClassUtils.forName(
+						DataSourceAutoConfiguration.class.getPackageName() + ".JdbcTemplateConfiguration",
+						DataSourceAutoConfiguration.class.getClassLoader());
+				Constructor<?> ctor = clazz.getDeclaredConstructor();
+				ctor.setAccessible(true);
+				Object configuration = ctor.newInstance();
+				Method method = clazz.getDeclaredMethod("jdbcTemplate", DataSource.class, JdbcProperties.class);
+				method.setAccessible(true);
+				return (JdbcTemplate) method.invoke(configuration, beanForPrefix(DataSource.class, prefix),
+						beanForPrefix(JdbcProperties.class, prefix));
+			}
+			catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
 		});
 
-		registerBeanDefinition(registry, NamedParameterJdbcTemplate.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setTargetType(NamedParameterJdbcTemplate.class);
-			beanDefinition.setInstanceSupplier(() -> {
-				try {
-					Class<?> clazz = ClassUtils.forName(
-							DataSourceAutoConfiguration.class.getPackageName()
-									+ ".NamedParameterJdbcTemplateConfiguration",
-							DataSourceAutoConfiguration.class.getClassLoader());
-					Constructor<?> ctor = clazz.getDeclaredConstructor();
-					ctor.setAccessible(true);
-					Object configuration = ctor.newInstance();
-					Method method = clazz.getDeclaredMethod("namedParameterJdbcTemplate", JdbcTemplate.class);
-					method.setAccessible(true);
-					return method.invoke(configuration, beanForPrefix(JdbcTemplate.class, prefix));
-				}
-				catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			});
-			return beanDefinition;
+		registerBeanInstanceSupplier(registry, NamedParameterJdbcTemplate.class, prefix, () -> {
+			try {
+				Class<?> clazz = ClassUtils.forName(
+						DataSourceAutoConfiguration.class.getPackageName() + ".NamedParameterJdbcTemplateConfiguration",
+						DataSourceAutoConfiguration.class.getClassLoader());
+				Constructor<?> ctor = clazz.getDeclaredConstructor();
+				ctor.setAccessible(true);
+				Object configuration = ctor.newInstance();
+				Method method = clazz.getDeclaredMethod("namedParameterJdbcTemplate", JdbcTemplate.class);
+				method.setAccessible(true);
+				return (NamedParameterJdbcTemplate) method.invoke(configuration,
+						beanForPrefix(JdbcTemplate.class, prefix));
+			}
+			catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
 		});
 	}
 
 	private void registerJdbcClient(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanDefinition(registry, JdbcClient.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setTargetType(JdbcClient.class);
-			beanDefinition.setInstanceSupplier(() -> {
-				JdbcClientAutoConfiguration configuration = new JdbcClientAutoConfiguration();
-				try {
-					Method method = JdbcClientAutoConfiguration.class.getDeclaredMethod("jdbcClient",
-							NamedParameterJdbcTemplate.class);
-					method.setAccessible(true);
-					return method.invoke(configuration, beanForPrefix(NamedParameterJdbcTemplate.class, prefix));
-				}
-				catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			});
-			return beanDefinition;
+		registerBeanInstanceSupplier(registry, JdbcClient.class, prefix, () -> {
+			JdbcClientAutoConfiguration configuration = new JdbcClientAutoConfiguration();
+			try {
+				Method method = JdbcClientAutoConfiguration.class.getDeclaredMethod("jdbcClient",
+						NamedParameterJdbcTemplate.class);
+				method.setAccessible(true);
+				return (JdbcClient) method.invoke(configuration,
+						beanForPrefix(NamedParameterJdbcTemplate.class, prefix));
+			}
+			catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
 		});
 	}
 
 	private void registerHikariCheckpointRestoreLifecycle(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanDefinition(registry, HikariCheckpointRestoreLifecycle.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setBeanClass(HikariCheckpointRestoreLifecycle.class);
 			ConstructorArgumentValues arguments = new ConstructorArgumentValues();
 			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameForPrefix(DataSource.class, prefix)));
 			arguments.addGenericArgumentValue(this.applicationContext);
