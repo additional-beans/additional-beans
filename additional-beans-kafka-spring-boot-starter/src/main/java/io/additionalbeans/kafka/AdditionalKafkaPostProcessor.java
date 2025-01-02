@@ -2,8 +2,6 @@ package io.additionalbeans.kafka;
 
 import io.additionalbeans.commons.AdditionalBeansPostProcessor;
 
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -13,7 +11,6 @@ import org.springframework.boot.autoconfigure.kafka.DefaultKafkaProducerFactoryC
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.kafka.KafkaConnectionDetails;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
-import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -28,13 +25,11 @@ import org.springframework.kafka.transaction.KafkaTransactionManager;
 /**
  * @author Yanming Zhou
  */
-public class AdditionalKafkaPostProcessor extends AdditionalBeansPostProcessor {
-
-	private static final String SPRING_KAFKA_PREFIX = "spring.kafka";
+public class AdditionalKafkaPostProcessor
+		extends AdditionalBeansPostProcessor<KafkaProperties, KafkaConnectionDetails> {
 
 	@Override
 	protected void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix) {
-		registerKafkaProperties(registry, prefix);
 		registerKafkaAutoConfiguration(registry, prefix);
 		registerKafkaProducerFactory(registry, prefix);
 		registerKafkaProducerListener(registry, prefix);
@@ -50,60 +45,17 @@ public class AdditionalKafkaPostProcessor extends AdditionalBeansPostProcessor {
 		}
 	}
 
-	@Override
-	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-		if (bean instanceof KafkaProperties) {
-			String suffix = KafkaProperties.class.getSimpleName();
-			if (beanName.endsWith(suffix)) {
-				String prefix = beanName.substring(0, beanName.length() - suffix.length());
-				if (this.prefixes.contains(prefix)) {
-					this.binder.bind(SPRING_KAFKA_PREFIX.replace("spring", prefix), Bindable.ofInstance(bean));
-				}
-			}
-		}
-		return bean;
-	}
-
-	private void registerKafkaProperties(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanDefinition(registry, KafkaProperties.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setTargetType(KafkaProperties.class);
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setInstanceSupplier(() -> {
-				KafkaProperties properties = new KafkaProperties();
-				KafkaProperties defaultKafkaProperties = this.applicationContext.getBean(
-						"%s-%s".formatted(SPRING_KAFKA_PREFIX, KafkaProperties.class.getName()), KafkaProperties.class);
-				BeanUtils.copyProperties(defaultKafkaProperties, properties);
-				return properties;
-			});
-			return beanDefinition;
-		});
-
-		registerBeanDefinition(registry, KafkaConnectionDetails.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition
-				.setBeanClassName(KafkaProperties.class.getPackageName() + ".PropertiesKafkaConnectionDetails");
-			ConstructorArgumentValues arguments = new ConstructorArgumentValues();
-			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(KafkaProperties.class, prefix)));
-			beanDefinition.setConstructorArgumentValues(arguments);
-			beanDefinition.setTargetType(KafkaConnectionDetails.class);
-			return beanDefinition;
-		});
-	}
-
 	private void registerKafkaAutoConfiguration(BeanDefinitionRegistry registry, String prefix) {
-
 		registerBeanDefinition(registry, KafkaAutoConfiguration.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setBeanClass(KafkaAutoConfiguration.class);
 			ConstructorArgumentValues arguments = new ConstructorArgumentValues();
-			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(KafkaProperties.class, prefix)));
+			arguments
+				.addGenericArgumentValue(new RuntimeBeanReference(beanNameForPrefix(KafkaProperties.class, prefix)));
 			beanDefinition.setConstructorArgumentValues(arguments);
 			return beanDefinition;
 		});
-
 	}
 
 	private void registerKafkaProducerFactory(BeanDefinitionRegistry registry, String prefix) {
@@ -111,11 +63,11 @@ public class AdditionalKafkaPostProcessor extends AdditionalBeansPostProcessor {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(DefaultKafkaProducerFactory.class);
-			beanDefinition.setInstanceSupplier(() -> beanFor(KafkaAutoConfiguration.class, prefix).kafkaProducerFactory(
-					beanFor(KafkaConnectionDetails.class, prefix),
-					beanProviderFor(DefaultKafkaProducerFactoryCustomizer.class), beanProviderFor(SslBundles.class)));
+			beanDefinition.setInstanceSupplier(() -> beanForPrefix(KafkaAutoConfiguration.class, prefix)
+				.kafkaProducerFactory(beanForPrefix(KafkaConnectionDetails.class, prefix),
+						beanProviderFor(DefaultKafkaProducerFactoryCustomizer.class),
+						beanProviderFor(SslBundles.class)));
 			return beanDefinition;
-
 		});
 	}
 
@@ -125,7 +77,7 @@ public class AdditionalKafkaPostProcessor extends AdditionalBeansPostProcessor {
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(LoggingProducerListener.class);
 			beanDefinition
-				.setInstanceSupplier(() -> beanFor(KafkaAutoConfiguration.class, prefix).kafkaProducerListener());
+				.setInstanceSupplier(() -> beanForPrefix(KafkaAutoConfiguration.class, prefix).kafkaProducerListener());
 			return beanDefinition;
 		});
 	}
@@ -135,9 +87,10 @@ public class AdditionalKafkaPostProcessor extends AdditionalBeansPostProcessor {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(DefaultKafkaConsumerFactory.class);
-			beanDefinition.setInstanceSupplier(() -> beanFor(KafkaAutoConfiguration.class, prefix).kafkaConsumerFactory(
-					beanFor(KafkaConnectionDetails.class, prefix),
-					beanProviderFor(DefaultKafkaConsumerFactoryCustomizer.class), beanProviderFor(SslBundles.class)));
+			beanDefinition.setInstanceSupplier(() -> beanForPrefix(KafkaAutoConfiguration.class, prefix)
+				.kafkaConsumerFactory(beanForPrefix(KafkaConnectionDetails.class, prefix),
+						beanProviderFor(DefaultKafkaConsumerFactoryCustomizer.class),
+						beanProviderFor(SslBundles.class)));
 			return beanDefinition;
 
 		});
@@ -149,9 +102,9 @@ public class AdditionalKafkaPostProcessor extends AdditionalBeansPostProcessor {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(KafkaTemplate.class);
-			beanDefinition.setInstanceSupplier(() -> beanFor(KafkaAutoConfiguration.class, prefix).kafkaTemplate(
-					beanFor(DefaultKafkaProducerFactory.class, prefix), beanFor(ProducerListener.class, prefix),
-					beanProviderFor(RecordMessageConverter.class)));
+			beanDefinition.setInstanceSupplier(() -> beanForPrefix(KafkaAutoConfiguration.class, prefix).kafkaTemplate(
+					beanForPrefix(DefaultKafkaProducerFactory.class, prefix),
+					beanForPrefix(ProducerListener.class, prefix), beanProviderFor(RecordMessageConverter.class)));
 			return beanDefinition;
 		});
 	}
@@ -161,8 +114,8 @@ public class AdditionalKafkaPostProcessor extends AdditionalBeansPostProcessor {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(KafkaAdmin.class);
-			beanDefinition.setInstanceSupplier(() -> beanFor(KafkaAutoConfiguration.class, prefix)
-				.kafkaAdmin(beanFor(KafkaConnectionDetails.class, prefix), beanProviderFor(SslBundles.class)));
+			beanDefinition.setInstanceSupplier(() -> beanForPrefix(KafkaAutoConfiguration.class, prefix)
+				.kafkaAdmin(beanForPrefix(KafkaConnectionDetails.class, prefix), beanProviderFor(SslBundles.class)));
 			return beanDefinition;
 		});
 	}
@@ -172,8 +125,8 @@ public class AdditionalKafkaPostProcessor extends AdditionalBeansPostProcessor {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(KafkaTransactionManager.class);
-			beanDefinition.setInstanceSupplier(() -> beanFor(KafkaAutoConfiguration.class, prefix)
-				.kafkaTransactionManager(beanFor(DefaultKafkaProducerFactory.class, prefix)));
+			beanDefinition.setInstanceSupplier(() -> beanForPrefix(KafkaAutoConfiguration.class, prefix)
+				.kafkaTransactionManager(beanForPrefix(DefaultKafkaProducerFactory.class, prefix)));
 			return beanDefinition;
 		});
 	}
@@ -183,8 +136,8 @@ public class AdditionalKafkaPostProcessor extends AdditionalBeansPostProcessor {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setTargetType(RetryTopicConfiguration.class);
-			beanDefinition.setInstanceSupplier(() -> beanFor(KafkaAutoConfiguration.class, prefix)
-				.kafkaRetryTopicConfiguration(beanFor(KafkaTemplate.class, prefix)));
+			beanDefinition.setInstanceSupplier(() -> beanForPrefix(KafkaAutoConfiguration.class, prefix)
+				.kafkaRetryTopicConfiguration(beanForPrefix(KafkaTemplate.class, prefix)));
 			return beanDefinition;
 		});
 	}

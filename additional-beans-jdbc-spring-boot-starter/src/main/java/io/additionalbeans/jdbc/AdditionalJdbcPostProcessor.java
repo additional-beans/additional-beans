@@ -36,9 +36,8 @@ import org.springframework.util.StringUtils;
 /**
  * @author Yanming Zhou
  */
-public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
-
-	private static final String SPRING_DATASOURCE_PREFIX = "spring.datasource";
+public class AdditionalJdbcPostProcessor
+		extends AdditionalBeansPostProcessor<DataSourceProperties, JdbcConnectionDetails> {
 
 	private static final String SPRING_JDBC_PREFIX = "spring.jdbc";
 
@@ -52,7 +51,6 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 
 	@Override
 	protected void registerBeanDefinitionsForPrefix(BeanDefinitionRegistry registry, String prefix) {
-		registerDataSourceProperties(registry, prefix);
 		registerDataSource(registry, prefix);
 		registerDataSourceTransactionManager(registry, prefix);
 		registerJdbcProperties(registry, prefix);
@@ -66,22 +64,14 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 
 	@Override
 	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
-		if (bean instanceof DataSourceProperties) {
-			String suffix = DataSourceProperties.class.getSimpleName();
-			if (beanName.endsWith(suffix)) {
-				String prefix = beanName.substring(0, beanName.length() - suffix.length());
-				if (this.prefixes.contains(prefix)) {
-					this.binder.bind(SPRING_DATASOURCE_PREFIX.replace("spring", prefix), Bindable.ofInstance(bean));
-				}
-			}
-		}
-		else if (bean instanceof DataSource) {
+		bean = super.postProcessBeforeInitialization(bean, beanName);
+		if (bean instanceof DataSource) {
 			String suffix = DataSource.class.getSimpleName();
 			if (beanName.endsWith(suffix)) {
 				String prefix = beanName.substring(0, beanName.length() - suffix.length());
 				if (this.prefixes.contains(prefix)) {
 					String type = bean.getClass().getName();
-					String namePrefix = SPRING_DATASOURCE_PREFIX.replace("spring", prefix) + '.';
+					String namePrefix = this.defaultConfigurationPropertiesPrefix.replace("spring", prefix) + '.';
 					Bindable<?> bindable = Bindable.ofInstance(bean);
 					switch (type) {
 						case HIKARI_DATASOURCE_CLASS_NAME -> {
@@ -112,36 +102,6 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 		return bean;
 	}
 
-	private void registerDataSourceProperties(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanDefinition(registry, DataSourceProperties.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setTargetType(DataSourceProperties.class);
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition.setInstanceSupplier(() -> {
-				DataSourceProperties properties = new DataSourceProperties();
-				DataSourceProperties defaultRedisProperties = this.applicationContext.getBean(
-						"%s-%s".formatted(SPRING_DATASOURCE_PREFIX, DataSourceProperties.class.getName()),
-						DataSourceProperties.class);
-				BeanUtils.copyProperties(defaultRedisProperties, properties);
-				return properties;
-			});
-			return beanDefinition;
-		});
-
-		registerBeanDefinition(registry, JdbcConnectionDetails.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setDefaultCandidate(false);
-			beanDefinition
-				.setBeanClassName(DataSourceProperties.class.getPackageName() + ".PropertiesJdbcConnectionDetails");
-			ConstructorArgumentValues arguments = new ConstructorArgumentValues();
-			arguments
-				.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(DataSourceProperties.class, prefix)));
-			beanDefinition.setConstructorArgumentValues(arguments);
-			beanDefinition.setTargetType(JdbcConnectionDetails.class);
-			return beanDefinition;
-		});
-	}
-
 	private void registerJdbcProperties(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanDefinition(registry, JdbcProperties.class, prefix, () -> {
 			RootBeanDefinition beanDefinition = new RootBeanDefinition();
@@ -164,7 +124,7 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 			beanDefinition.setTargetType(DataSource.class);
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setInstanceSupplier(
-					() -> beanFor(DataSourceProperties.class, prefix).initializeDataSourceBuilder().build());
+					() -> beanForPrefix(DataSourceProperties.class, prefix).initializeDataSourceBuilder().build());
 			return beanDefinition;
 		});
 	}
@@ -184,7 +144,7 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 					Method method = jdbcTransactionManagerConfiguration.getDeclaredMethod("transactionManager",
 							Environment.class, DataSource.class, ObjectProvider.class);
 					method.setAccessible(true);
-					return method.invoke(configuration, this.environment, beanFor(DataSource.class, prefix),
+					return method.invoke(configuration, this.environment, beanForPrefix(DataSource.class, prefix),
 							beanProviderFor(TransactionManagerCustomizers.class));
 				}
 				catch (Exception ex) {
@@ -210,8 +170,8 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 					Object configuration = ctor.newInstance();
 					Method method = clazz.getDeclaredMethod("jdbcTemplate", DataSource.class, JdbcProperties.class);
 					method.setAccessible(true);
-					return method.invoke(configuration, beanFor(DataSource.class, prefix),
-							beanFor(JdbcProperties.class, prefix));
+					return method.invoke(configuration, beanForPrefix(DataSource.class, prefix),
+							beanForPrefix(JdbcProperties.class, prefix));
 				}
 				catch (Exception ex) {
 					throw new RuntimeException(ex);
@@ -235,7 +195,7 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 					Object configuration = ctor.newInstance();
 					Method method = clazz.getDeclaredMethod("namedParameterJdbcTemplate", JdbcTemplate.class);
 					method.setAccessible(true);
-					return method.invoke(configuration, beanFor(JdbcTemplate.class, prefix));
+					return method.invoke(configuration, beanForPrefix(JdbcTemplate.class, prefix));
 				}
 				catch (Exception ex) {
 					throw new RuntimeException(ex);
@@ -256,7 +216,7 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 					Method method = JdbcClientAutoConfiguration.class.getDeclaredMethod("jdbcClient",
 							NamedParameterJdbcTemplate.class);
 					method.setAccessible(true);
-					return method.invoke(configuration, beanFor(NamedParameterJdbcTemplate.class, prefix));
+					return method.invoke(configuration, beanForPrefix(NamedParameterJdbcTemplate.class, prefix));
 				}
 				catch (Exception ex) {
 					throw new RuntimeException(ex);
@@ -272,7 +232,7 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 			beanDefinition.setDefaultCandidate(false);
 			beanDefinition.setBeanClass(HikariCheckpointRestoreLifecycle.class);
 			ConstructorArgumentValues arguments = new ConstructorArgumentValues();
-			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(DataSource.class, prefix)));
+			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameForPrefix(DataSource.class, prefix)));
 			arguments.addGenericArgumentValue(this.applicationContext);
 			beanDefinition.setConstructorArgumentValues(arguments);
 			return beanDefinition;
@@ -281,8 +241,9 @@ public class AdditionalJdbcPostProcessor extends AdditionalBeansPostProcessor {
 
 	private boolean useHikariFor(String prefix) {
 		String suffix = ".type";
-		String type = this.environment.getProperty(SPRING_DATASOURCE_PREFIX.replace("spring", prefix) + suffix,
-				this.environment.getProperty(SPRING_DATASOURCE_PREFIX + suffix));
+		String type = this.environment.getProperty(
+				this.defaultConfigurationPropertiesPrefix.replace("spring", prefix) + suffix,
+				this.environment.getProperty(this.defaultConfigurationPropertiesPrefix + suffix));
 		return HIKARI_DATASOURCE_CLASS_NAME.equals(type) || type == null && ClassUtils
 			.isPresent(HIKARI_DATASOURCE_CLASS_NAME, DataSourceAutoConfiguration.class.getClassLoader());
 	}
