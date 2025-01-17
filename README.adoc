@@ -248,3 +248,56 @@ And you can inject beans using `@Qualifier` as following:
 	@Qualifier("barMongoTemplate")
 	private MongoTemplate barMongoTemplate;
 ----
+
+=== Additional RabbitMQ beans
+
+Add dependency:
+[source,kotlin]
+----
+implementation("io.additionalbeans:additional-beans-rabbitmq-spring-boot-starter")
+----
+
+Then you can configure it as following:
+[source,yaml]
+----
+# primary redis service
+spring.rabbitmq:
+  host: 127.0.0.1
+  port: 5672
+
+additional.mongodb.prefixes: [foo, bar]
+foo.rabbitmq:
+  port: 5673
+  username: foo
+bar.rabbitmq:
+  port: 5674
+  username: bar
+----
+
+And you can inject beans using `@Qualifier` as following:
+[source,java]
+----
+	@Autowired
+	@Qualifier("fooConnectionFactory")
+	private ConnectionFactory fooConnectionFactory;
+
+	@Autowired
+	@Qualifier("barConnectionFactory")
+	private ConnectionFactory barConnectionFactory;
+
+	@Autowired
+	@Qualifier("fooRabbitTemplate")
+	private RabbitTemplate fooRabbitTemplate;
+
+	@Autowired
+	@Qualifier("barRabbitTemplate")
+	private RabbitTemplate barRabbitTemplate;
+
+	@Autowired
+	@Qualifier("fooAmqpAdmin")
+	private AmqpAdmin fooAmqpAdmin;
+
+	@Autowired
+	@Qualifier("barAmqpAdmin")
+	private AmqpAdmin barAmqpAdmin;
+----
