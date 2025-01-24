@@ -1,14 +1,10 @@
 package io.additionalbeans.commons;
 
-import java.beans.PropertyDescriptor;
-import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.FatalBeanException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -115,19 +111,7 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 	protected abstract void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix);
 
 	protected void registerConfigurationProperties(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanInstanceSupplier(registry, this.configurationPropertiesClass, prefix, () -> {
-			try {
-				CP properties = this.configurationPropertiesClass.getConstructor().newInstance();
-				CP defaultProperties = this.applicationContext.getBean("%s-%s"
-					.formatted(this.defaultConfigurationPropertiesPrefix, this.configurationPropertiesClass.getName()),
-						this.configurationPropertiesClass);
-				copyNonNullProperties(defaultProperties, properties);
-				return properties;
-			}
-			catch (Exception ex) {
-				throw new RuntimeException(ex);
-			}
-		});
+		registerBeanDefinition(registry, this.configurationPropertiesClass, prefix);
 
 		String propertiesConnectionDetailsClassName = this.connectionDetailsClass.getPackageName() + ".Properties"
 				+ this.connectionDetailsClass.getSimpleName();
@@ -144,23 +128,12 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 		}
 	}
 
-	private static <T> void copyNonNullProperties(T source, T target) {
-		PropertyDescriptor[] targetPds = BeanUtils.getPropertyDescriptors(target.getClass());
-		for (PropertyDescriptor targetPd : targetPds) {
-			Method readMethod = targetPd.getReadMethod();
-			Method writeMethod = targetPd.getWriteMethod();
-			if (readMethod != null && writeMethod != null) {
-				try {
-					Object value = readMethod.invoke(source);
-					if (value != null) {
-						writeMethod.invoke(target, value);
-					}
-				}
-				catch (Throwable ex) {
-					throw new FatalBeanException(
-							"Could not copy property '" + targetPd.getName() + "' from source to target", ex);
-				}
-			}
+	protected <T> void registerBeanDefinition(BeanDefinitionRegistry registry, Class<T> beanClass, String prefix) {
+		String beanName = beanNameFor(beanClass, prefix);
+		if (!registry.containsBeanDefinition(beanName)) {
+			RootBeanDefinition bd = new RootBeanDefinition(beanClass);
+			bd.setDefaultCandidate(false);
+			registry.registerBeanDefinition(beanName, bd);
 		}
 	}
 

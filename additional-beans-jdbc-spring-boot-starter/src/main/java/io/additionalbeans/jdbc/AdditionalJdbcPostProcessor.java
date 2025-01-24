@@ -8,7 +8,6 @@ import javax.sql.DataSource;
 import com.zaxxer.hikari.HikariDataSource;
 import io.additionalbeans.commons.AdditionalBeansPostProcessor;
 
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
@@ -102,13 +101,7 @@ public class AdditionalJdbcPostProcessor
 	}
 
 	private void registerJdbcProperties(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanInstanceSupplier(registry, JdbcProperties.class, prefix, () -> {
-			JdbcProperties properties = new JdbcProperties();
-			JdbcProperties defaultRedisProperties = this.applicationContext
-				.getBean("%s-%s".formatted(SPRING_JDBC_PREFIX, JdbcProperties.class.getName()), JdbcProperties.class);
-			BeanUtils.copyProperties(defaultRedisProperties, properties);
-			return properties;
-		});
+		registerBeanDefinition(registry, JdbcProperties.class, prefix);
 	}
 
 	private void registerDataSource(BeanDefinitionRegistry registry, String prefix) {
