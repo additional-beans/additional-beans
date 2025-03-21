@@ -2,179 +2,150 @@ package io.additionalbeans.kafka;
 
 import org.junit.jupiter.api.Test;
 
-import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.kafka.KafkaConnectionDetails;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.ProducerListener;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Yanming Zhou
  */
-@TestPropertySource(properties = { "additional.kafka.prefixes=foo,bar", "spring.kafka.bootstrap-servers=localhost:9092",
-		"spring.kafka.client-id=default", "foo.kafka.client-id=foo", "foo.kafka.retry.topic.enabled=true",
-		"bar.kafka.client-id=bar", "bar.kafka.producer.transaction-id-prefix=bar" })
-@ImportAutoConfiguration({ KafkaAutoConfiguration.class, AdditionalKafkaAutoConfiguration.class })
-@SpringJUnitConfig
 class AdditionalKafkaAutoConfigurationTests {
 
-	@Autowired
-	private KafkaProperties kafkaProperties;
-
-	@Autowired
-	@Qualifier("fooKafkaProperties")
-	private KafkaProperties fooKafkaProperties;
-
-	@Autowired
-	@Qualifier("barKafkaProperties")
-	private KafkaProperties barKafkaProperties;
-
-	@Autowired
-	private KafkaConnectionDetails kafkaConnectionDetails;
-
-	@Autowired
-	@Qualifier("fooKafkaConnectionDetails")
-	private KafkaConnectionDetails fooKafkaConnectionDetails;
-
-	@Autowired
-	@Qualifier("barKafkaConnectionDetails")
-	private KafkaConnectionDetails barKafkaConnectionDetails;
-
-	@Autowired
-	private DefaultKafkaProducerFactory<?, ?> kafkaProducerFactory;
-
-	@Autowired
-	@Qualifier("fooKafkaProducerFactory")
-	private DefaultKafkaProducerFactory<?, ?> fooKafkaProducerFactory;
-
-	@Autowired
-	@Qualifier("barKafkaProducerFactory")
-	private DefaultKafkaProducerFactory<?, ?> barKafkaProducerFactory;
-
-	@Autowired
-	private ProducerListener<Object, Object> kafkaProducerListener;
-
-	@Autowired
-	@Qualifier("fooProducerListener")
-	private ProducerListener<Object, Object> fooProducerListener;
-
-	@Autowired
-	@Qualifier("barProducerListener")
-	private ProducerListener<Object, Object> barProducerListener;
-
-	@Autowired
-	private DefaultKafkaConsumerFactory<?, ?> kafkaConsumerFactory;
-
-	@Autowired
-	@Qualifier("fooKafkaConsumerFactory")
-	private DefaultKafkaConsumerFactory<?, ?> fooKafkaConsumerFactory;
-
-	@Autowired
-	@Qualifier("barKafkaConsumerFactory")
-	private DefaultKafkaConsumerFactory<?, ?> barKafkaConsumerFactory;
-
-	@Autowired
-	private KafkaTemplate<?, ?> kafkaTemplate;
-
-	@Autowired
-	@Qualifier("fooKafkaTemplate")
-	private KafkaTemplate<?, ?> fooKafkaTemplate;
-
-	@Autowired
-	@Qualifier("barKafkaTemplate")
-	private KafkaTemplate<?, ?> barKafkaTemplate;
+	private static final ApplicationContextRunner runner = new ApplicationContextRunner()
+		.withConfiguration(AutoConfigurations.of(KafkaAutoConfiguration.class, AdditionalKafkaAutoConfiguration.class))
+		.withPropertyValues("additional.kafka.prefixes=foo,bar", "spring.kafka.bootstrap-servers=localhost:9092",
+				"spring.kafka.client-id=default", "foo.kafka.client-id=foo", "foo.kafka.retry.topic.enabled=true",
+				"bar.kafka.client-id=bar", "bar.kafka.producer.transaction-id-prefix=bar");
 
 	@Autowired
 	private KafkaAdmin kafkaAdmin;
 
-	@Autowired
-	@Qualifier("fooKafkaAdmin")
-	private KafkaAdmin fooKafkaAdmin;
-
-	@Autowired
-	@Qualifier("barKafkaAdmin")
-	private KafkaAdmin barKafkaAdmin;
-
-	@Autowired
-	private BeanFactory beanFactory;
-
 	@Test
 	void testKafkaProperties() {
-		assertThat(this.fooKafkaProperties.getBootstrapServers()).isEqualTo(this.kafkaProperties.getBootstrapServers());
-		assertThat(this.barKafkaProperties.getBootstrapServers()).isEqualTo(this.kafkaProperties.getBootstrapServers());
-		assertThat(this.kafkaProperties.getClientId()).isEqualTo("default");
-		assertThat(this.fooKafkaProperties.getClientId()).isEqualTo("foo");
-		assertThat(this.barKafkaProperties.getClientId()).isEqualTo("bar");
+		runner.run((ctx) -> {
+			KafkaProperties kafkaProperties = ctx.getBean(KafkaProperties.class);
+			KafkaProperties fooKafkaProperties = ctx.getBean("fooKafkaProperties", KafkaProperties.class);
+			KafkaProperties barKafkaProperties = ctx.getBean("barKafkaProperties", KafkaProperties.class);
+			assertThat(fooKafkaProperties.getBootstrapServers()).isEqualTo(kafkaProperties.getBootstrapServers());
+			assertThat(barKafkaProperties.getBootstrapServers()).isEqualTo(kafkaProperties.getBootstrapServers());
+			assertThat(kafkaProperties.getClientId()).isEqualTo("default");
+			assertThat(fooKafkaProperties.getClientId()).isEqualTo("foo");
+			assertThat(barKafkaProperties.getClientId()).isEqualTo("bar");
+		});
 	}
 
 	@Test
 	void testKafkaConnectionDetails() {
-		assertThat(this.kafkaConnectionDetails.getBootstrapServers())
-			.isEqualTo(this.kafkaProperties.getBootstrapServers());
-		assertThat(this.fooKafkaConnectionDetails.getBootstrapServers())
-			.isEqualTo(this.fooKafkaProperties.getBootstrapServers());
-		assertThat(this.barKafkaConnectionDetails.getBootstrapServers())
-			.isEqualTo(this.barKafkaProperties.getBootstrapServers());
+		runner.run((ctx) -> {
+			KafkaConnectionDetails kafkaConnectionDetails = ctx.getBean(KafkaConnectionDetails.class);
+			KafkaConnectionDetails fooKafkaConnectionDetails = ctx.getBean("fooKafkaConnectionDetails",
+					KafkaConnectionDetails.class);
+			KafkaConnectionDetails barKafkaConnectionDetails = ctx.getBean("barKafkaConnectionDetails",
+					KafkaConnectionDetails.class);
+			KafkaProperties kafkaProperties = ctx.getBean(KafkaProperties.class);
+			KafkaProperties fooKafkaProperties = ctx.getBean("fooKafkaProperties", KafkaProperties.class);
+			KafkaProperties barKafkaProperties = ctx.getBean("barKafkaProperties", KafkaProperties.class);
+			assertThat(kafkaConnectionDetails.getBootstrapServers()).isEqualTo(kafkaProperties.getBootstrapServers());
+			assertThat(fooKafkaConnectionDetails.getBootstrapServers())
+				.isEqualTo(fooKafkaProperties.getBootstrapServers());
+			assertThat(barKafkaConnectionDetails.getBootstrapServers())
+				.isEqualTo(barKafkaProperties.getBootstrapServers());
+		});
 	}
 
 	@Test
 	void testKafkaProducerFactory() {
-		assertThat(this.kafkaProducerFactory).isNotSameAs(this.fooKafkaProducerFactory);
-		assertThat(this.kafkaProducerFactory).isNotSameAs(this.barKafkaProducerFactory);
-		assertThat(this.fooKafkaProducerFactory).isNotSameAs(this.barKafkaProducerFactory);
+		runner.run((ctx) -> {
+			DefaultKafkaProducerFactory<?, ?> kafkaProducerFactory = ctx.getBean(DefaultKafkaProducerFactory.class);
+			DefaultKafkaProducerFactory<?, ?> fooKafkaProducerFactory = ctx.getBean("fooKafkaProducerFactory",
+					DefaultKafkaProducerFactory.class);
+			DefaultKafkaProducerFactory<?, ?> barKafkaProducerFactory = ctx.getBean("barKafkaProducerFactory",
+					DefaultKafkaProducerFactory.class);
+			assertThat(kafkaProducerFactory).isNotSameAs(fooKafkaProducerFactory);
+			assertThat(kafkaProducerFactory).isNotSameAs(barKafkaProducerFactory);
+			assertThat(fooKafkaProducerFactory).isNotSameAs(barKafkaProducerFactory);
+		});
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	void testKafkaProducerListener() {
-		assertThat(this.kafkaProducerListener).isNotSameAs(this.fooProducerListener);
-		assertThat(this.fooProducerListener).isNotSameAs(this.barProducerListener);
-		assertThat(this.fooProducerListener).isNotSameAs(this.barProducerListener);
+		runner.run((ctx) -> {
+			ProducerListener<Object, Object> kafkaProducerListener = ctx.getBean(ProducerListener.class);
+			ProducerListener<Object, Object> fooProducerListener = ctx.getBean("fooProducerListener",
+					ProducerListener.class);
+			ProducerListener<Object, Object> barProducerListener = ctx.getBean("barProducerListener",
+					ProducerListener.class);
+			assertThat(kafkaProducerListener).isNotSameAs(fooProducerListener);
+			assertThat(fooProducerListener).isNotSameAs(barProducerListener);
+			assertThat(fooProducerListener).isNotSameAs(barProducerListener);
+		});
 	}
 
 	@Test
 	void testKafkaConsumerFactory() {
-		assertThat(this.kafkaConsumerFactory).isNotSameAs(this.fooKafkaConsumerFactory);
-		assertThat(this.kafkaConsumerFactory).isNotSameAs(this.barKafkaConsumerFactory);
-		assertThat(this.fooKafkaConsumerFactory).isNotSameAs(this.barKafkaConsumerFactory);
+		runner.run((ctx) -> {
+			DefaultKafkaConsumerFactory<?, ?> kafkaConsumerFactory = ctx.getBean(DefaultKafkaConsumerFactory.class);
+			DefaultKafkaConsumerFactory<?, ?> fooKafkaConsumerFactory = ctx.getBean("fooKafkaConsumerFactory",
+					DefaultKafkaConsumerFactory.class);
+			DefaultKafkaConsumerFactory<?, ?> barKafkaConsumerFactory = ctx.getBean("barKafkaConsumerFactory",
+					DefaultKafkaConsumerFactory.class);
+			assertThat(kafkaConsumerFactory).isNotSameAs(fooKafkaConsumerFactory);
+			assertThat(kafkaConsumerFactory).isNotSameAs(barKafkaConsumerFactory);
+			assertThat(fooKafkaConsumerFactory).isNotSameAs(barKafkaConsumerFactory);
+		});
 	}
 
 	@Test
 	void testKafkaTemplate() {
-		assertThat(this.kafkaTemplate).isNotSameAs(this.fooKafkaTemplate);
-		assertThat(this.kafkaTemplate).isNotSameAs(this.barKafkaTemplate);
-		assertThat(this.barKafkaTemplate).isNotSameAs(this.fooKafkaTemplate);
+		runner.run((ctx) -> {
+			KafkaTemplate<?, ?> kafkaTemplate = ctx.getBean(KafkaTemplate.class);
+			KafkaTemplate<?, ?> fooKafkaTemplate = ctx.getBean("fooKafkaTemplate", KafkaTemplate.class);
+			KafkaTemplate<?, ?> barKafkaTemplate = ctx.getBean("barKafkaTemplate", KafkaTemplate.class);
+			assertThat(kafkaTemplate).isNotSameAs(fooKafkaTemplate);
+			assertThat(kafkaTemplate).isNotSameAs(barKafkaTemplate);
+			assertThat(barKafkaTemplate).isNotSameAs(fooKafkaTemplate);
+		});
 	}
 
 	@Test
 	void testKafkaAdmin() {
-		assertThat(this.kafkaAdmin).isNotSameAs(this.fooKafkaAdmin);
-		assertThat(this.kafkaAdmin).isNotSameAs(this.barKafkaAdmin);
-		assertThat(this.barKafkaAdmin).isNotSameAs(this.fooKafkaAdmin);
+		runner.run((ctx) -> {
+			KafkaAdmin kafkaAdmin = ctx.getBean(KafkaAdmin.class);
+			KafkaAdmin fooKafkaAdmin = ctx.getBean("fooKafkaAdmin", KafkaAdmin.class);
+			KafkaAdmin barKafkaAdmin = ctx.getBean("barKafkaAdmin", KafkaAdmin.class);
+			assertThat(kafkaAdmin).isNotSameAs(fooKafkaAdmin);
+			assertThat(kafkaAdmin).isNotSameAs(barKafkaAdmin);
+			assertThat(barKafkaAdmin).isNotSameAs(fooKafkaAdmin);
+		});
 	}
 
 	@Test
 	void testKafkaTransactionManager() {
-		assertThat(this.beanFactory.containsBean("kafkaTransactionManager")).isFalse();
-		assertThat(this.beanFactory.containsBean("fooKafkaTransactionManager")).isFalse();
-		assertThat(this.beanFactory.containsBean("barKafkaTransactionManager")).isTrue();
+		runner.run((ctx) -> {
+			assertThat(ctx).doesNotHaveBean("kafkaTransactionManager");
+			assertThat(ctx).doesNotHaveBean("fooKafkaTransactionManager");
+			assertThat(ctx).hasBean("barKafkaTransactionManager");
+		});
 	}
 
 	@Test
 	void testKafkaRetryTopicConfiguration() {
-		assertThat(this.beanFactory.containsBean("kafkaRetryTopicConfiguration")).isFalse();
-		assertThat(this.beanFactory.containsBean("fooRetryTopicConfiguration")).isTrue();
-		assertThat(this.beanFactory.containsBean("barRetryTopicConfiguration")).isFalse();
+		runner.run((ctx) -> {
+			assertThat(ctx).doesNotHaveBean("kafkaRetryTopicConfiguration");
+			assertThat(ctx).hasBean("fooRetryTopicConfiguration");
+			assertThat(ctx).doesNotHaveBean("barRetryTopicConfiguration");
+		});
 	}
 
 }
