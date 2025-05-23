@@ -1,7 +1,10 @@
 package io.additionalbeans.kafka;
 
+import java.lang.reflect.Method;
+
 import io.additionalbeans.commons.AdditionalBeansPostProcessor;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -11,7 +14,6 @@ import org.springframework.boot.autoconfigure.kafka.DefaultKafkaProducerFactoryC
 import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.boot.autoconfigure.kafka.KafkaConnectionDetails;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
-import org.springframework.boot.ssl.SslBundles;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
@@ -56,10 +58,20 @@ public class AdditionalKafkaPostProcessor
 	}
 
 	private void registerKafkaProducerFactory(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanInstanceSupplier(registry, DefaultKafkaProducerFactory.class, prefix,
-				() -> beanFor(KafkaAutoConfiguration.class, prefix).kafkaProducerFactory(
+		registerBeanInstanceSupplier(registry, DefaultKafkaProducerFactory.class, prefix, () -> {
+			KafkaAutoConfiguration configuration = beanFor(KafkaAutoConfiguration.class, prefix);
+			try {
+				Method method = configuration.getClass()
+					.getDeclaredMethod("kafkaProducerFactory", KafkaConnectionDetails.class, ObjectProvider.class);
+				method.setAccessible(true);
+				return (DefaultKafkaProducerFactory<?, ?>) method.invoke(configuration,
 						beanFor(KafkaConnectionDetails.class, prefix),
-						beanProviderOf(DefaultKafkaProducerFactoryCustomizer.class), beanProviderOf(SslBundles.class)));
+						beanProviderOf(DefaultKafkaProducerFactoryCustomizer.class));
+			}
+			catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
+		});
 	}
 
 	private void registerKafkaProducerListener(BeanDefinitionRegistry registry, String prefix) {
@@ -68,10 +80,20 @@ public class AdditionalKafkaPostProcessor
 	}
 
 	private void registerKafkaConsumerFactory(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanInstanceSupplier(registry, DefaultKafkaConsumerFactory.class, prefix,
-				() -> beanFor(KafkaAutoConfiguration.class, prefix).kafkaConsumerFactory(
+		registerBeanInstanceSupplier(registry, DefaultKafkaConsumerFactory.class, prefix, () -> {
+			KafkaAutoConfiguration configuration = beanFor(KafkaAutoConfiguration.class, prefix);
+			try {
+				Method method = configuration.getClass()
+					.getDeclaredMethod("kafkaConsumerFactory", KafkaConnectionDetails.class, ObjectProvider.class);
+				method.setAccessible(true);
+				return (DefaultKafkaConsumerFactory<?, ?>) method.invoke(configuration,
 						beanFor(KafkaConnectionDetails.class, prefix),
-						beanProviderOf(DefaultKafkaConsumerFactoryCustomizer.class), beanProviderOf(SslBundles.class)));
+						beanProviderOf(DefaultKafkaConsumerFactoryCustomizer.class));
+			}
+			catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
+		});
 	}
 
 	@SuppressWarnings("unchecked")
@@ -83,9 +105,17 @@ public class AdditionalKafkaPostProcessor
 	}
 
 	private void registerKafkaAdmin(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanInstanceSupplier(registry, KafkaAdmin.class, prefix,
-				() -> beanFor(KafkaAutoConfiguration.class, prefix)
-					.kafkaAdmin(beanFor(KafkaConnectionDetails.class, prefix), beanProviderOf(SslBundles.class)));
+		registerBeanInstanceSupplier(registry, KafkaAdmin.class, prefix, () -> {
+			KafkaAutoConfiguration configuration = beanFor(KafkaAutoConfiguration.class, prefix);
+			try {
+				Method method = configuration.getClass().getDeclaredMethod("kafkaAdmin", KafkaConnectionDetails.class);
+				method.setAccessible(true);
+				return (KafkaAdmin) method.invoke(configuration, beanFor(KafkaConnectionDetails.class, prefix));
+			}
+			catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
+		});
 	}
 
 	private void registerKafkaTransactionManager(BeanDefinitionRegistry registry, String prefix) {

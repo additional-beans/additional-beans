@@ -27,6 +27,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.support.SQLExceptionTranslator;
 import org.springframework.transaction.TransactionManager;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
@@ -138,10 +139,11 @@ public class AdditionalJdbcPostProcessor
 				Constructor<?> ctor = clazz.getDeclaredConstructor();
 				ctor.setAccessible(true);
 				Object configuration = ctor.newInstance();
-				Method method = clazz.getDeclaredMethod("jdbcTemplate", DataSource.class, JdbcProperties.class);
+				Method method = clazz.getDeclaredMethod("jdbcTemplate", DataSource.class, JdbcProperties.class,
+						ObjectProvider.class);
 				method.setAccessible(true);
 				return (JdbcTemplate) method.invoke(configuration, beanFor(DataSource.class, prefix),
-						beanFor(JdbcProperties.class, prefix));
+						beanFor(JdbcProperties.class, prefix), beanProviderOf(SQLExceptionTranslator.class));
 			}
 			catch (Exception ex) {
 				throw new RuntimeException(ex);

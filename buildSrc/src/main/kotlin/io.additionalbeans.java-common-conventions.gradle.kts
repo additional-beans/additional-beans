@@ -77,6 +77,7 @@ val mockitoAgent by configurations.creating
 
 dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	integrationTestImplementation(project)
 	integrationTestImplementation("org.springframework.boot:spring-boot-testcontainers")
 	integrationTestImplementation("org.testcontainers:junit-jupiter")

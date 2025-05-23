@@ -24,7 +24,6 @@ import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.boot.autoconfigure.amqp.RabbitRetryTemplateCustomizer;
 import org.springframework.boot.autoconfigure.amqp.RabbitTemplateConfigurer;
 import org.springframework.boot.autoconfigure.amqp.RabbitTemplateCustomizer;
-import org.springframework.boot.ssl.SslBundles;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.util.ClassUtils;
 
@@ -69,13 +68,11 @@ public class AdditionalRabbitmqPostProcessor
 			try {
 				Method method = connectionConfiguration.getClass()
 					.getDeclaredMethod("rabbitConnectionFactoryBeanConfigurer", ResourceLoader.class,
-							RabbitConnectionDetails.class, ObjectProvider.class, ObjectProvider.class,
-							ObjectProvider.class);
+							RabbitConnectionDetails.class, ObjectProvider.class, ObjectProvider.class);
 				method.setAccessible(true);
 				return (RabbitConnectionFactoryBeanConfigurer) method.invoke(connectionConfiguration,
 						this.applicationContext, beanFor(RabbitConnectionDetails.class, prefix),
-						beanProviderOf(CredentialsProvider.class), beanProviderOf(CredentialsRefreshService.class),
-						beanProviderOf(SslBundles.class));
+						beanProviderOf(CredentialsProvider.class), beanProviderOf(CredentialsRefreshService.class));
 			}
 			catch (Exception ex) {
 				throw new RuntimeException(ex);

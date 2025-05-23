@@ -7,11 +7,9 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import io.additionalbeans.commons.AdditionalBeansPostProcessor;
 
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.redis.ClientResourcesBuilderCustomizer;
 import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
 import org.springframework.boot.autoconfigure.mongo.MongoClientSettingsBuilderCustomizer;
 import org.springframework.boot.autoconfigure.mongo.MongoConnectionDetails;
@@ -52,11 +50,10 @@ public class AdditionalMongodbPostProcessor
 			try {
 				Method method = connectionConfiguration.getClass()
 					.getDeclaredMethod("standardMongoSettingsCustomizer", MongoProperties.class,
-							MongoConnectionDetails.class, ObjectProvider.class);
+							MongoConnectionDetails.class);
 				method.setAccessible(true);
 				return (StandardMongoClientSettingsBuilderCustomizer) method.invoke(connectionConfiguration,
-						beanFor(MongoProperties.class, prefix), beanFor(MongoConnectionDetails.class, prefix),
-						beanProviderOf(ClientResourcesBuilderCustomizer.class));
+						beanFor(MongoProperties.class, prefix), beanFor(MongoConnectionDetails.class, prefix));
 			}
 			catch (Exception ex) {
 				throw new RuntimeException(ex);

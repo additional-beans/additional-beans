@@ -1,5 +1,6 @@
 package io.additionalbeans.commons;
 
+import java.lang.reflect.Constructor;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
@@ -8,8 +9,6 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.beans.factory.config.ConstructorArgumentValues;
-import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.beans.factory.support.RootBeanDefinition;
@@ -17,9 +16,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.ssl.SslBundles;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.ResolvableType;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.env.Environment;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -52,8 +53,8 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 		this.configurationPropertiesClass = (Class<CP>) resolvableType.getGeneric(0).resolve();
 		this.connectionDetailsClass = (Class<CD>) resolvableType.getGeneric(1).resolve();
 		Assert.notNull(this.configurationPropertiesClass, "configurationPropertiesClass shouldn't be null");
-		ConfigurationProperties configurationProperties = this.configurationPropertiesClass
-			.getAnnotation(ConfigurationProperties.class);
+		ConfigurationProperties configurationProperties = AnnotationUtils
+			.findAnnotation(this.configurationPropertiesClass, ConfigurationProperties.class);
 		Assert.notNull(this.configurationPropertiesClass,
 				"configurationPropertiesClass should annotated with @ConfigurationProperties");
 		this.defaultConfigurationPropertiesPrefix = configurationProperties.prefix();
@@ -112,20 +113,40 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 
 	protected void registerConfigurationProperties(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanDefinition(registry, this.configurationPropertiesClass, prefix);
-
 		String propertiesConnectionDetailsClassName = this.connectionDetailsClass.getPackageName() + ".Properties"
 				+ this.connectionDetailsClass.getSimpleName();
 		if (ClassUtils.isPresent(propertiesConnectionDetailsClassName, this.connectionDetailsClass.getClassLoader())) {
-			registerBeanDefinition(registry, this.connectionDetailsClass, prefix, () -> {
-				RootBeanDefinition beanDefinition = new RootBeanDefinition();
-				beanDefinition.setBeanClassName(propertiesConnectionDetailsClassName);
-				ConstructorArgumentValues arguments = new ConstructorArgumentValues();
-				arguments.addGenericArgumentValue(
-						new RuntimeBeanReference(beanNameFor(this.configurationPropertiesClass, prefix)));
-				beanDefinition.setConstructorArgumentValues(arguments);
-				return beanDefinition;
-			});
+			registerBeanDefinition(registry, this.connectionDetailsClass, prefix,
+					() -> buildConnectionDetailsBeanDefinition(propertiesConnectionDetailsClassName, prefix));
 		}
+	}
+
+	protected RootBeanDefinition buildConnectionDetailsBeanDefinition(String propertiesConnectionDetailsClassName,
+			String prefix) {
+		RootBeanDefinition beanDefinition = new RootBeanDefinition();
+		beanDefinition.setInstanceSupplier(() -> {
+			try {
+				Class<?> clazz = ClassUtils.forName(propertiesConnectionDetailsClassName,
+						this.connectionDetailsClass.getClassLoader());
+				Constructor<?> constructor = clazz.getDeclaredConstructors()[0];
+				constructor.setAccessible(true);
+				if (constructor.getParameterCount() == 1) {
+					return constructor.newInstance(beanFor(this.configurationPropertiesClass, prefix));
+				}
+				else if (constructor.getParameterCount() == 2
+						&& constructor.getParameterTypes()[1] == SslBundles.class) {
+					return constructor.newInstance(beanFor(this.configurationPropertiesClass, prefix),
+							beanProviderOf(SslBundles.class).getIfAvailable());
+				}
+				else {
+					throw new RuntimeException("Unsupported constructor for " + propertiesConnectionDetailsClassName);
+				}
+			}
+			catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
+		});
+		return beanDefinition;
 	}
 
 	protected <T> void registerBeanDefinition(BeanDefinitionRegistry registry, Class<T> beanClass, String prefix) {
