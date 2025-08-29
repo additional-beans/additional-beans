@@ -60,8 +60,7 @@ public class AdditionalRedisPostProcessor
 				return ctor.newInstance(beanFor(RedisProperties.class, prefix),
 						beanProviderOf(RedisStandaloneConfiguration.class),
 						beanProviderOf(RedisSentinelConfiguration.class),
-						beanProviderOf(RedisClusterConfiguration.class), beanFor(RedisConnectionDetails.class, prefix),
-						beanProviderOf(SslBundles.class));
+						beanProviderOf(RedisClusterConfiguration.class), beanFor(RedisConnectionDetails.class, prefix));
 			}
 			catch (Exception ex) {
 				throw new RuntimeException(ex);
