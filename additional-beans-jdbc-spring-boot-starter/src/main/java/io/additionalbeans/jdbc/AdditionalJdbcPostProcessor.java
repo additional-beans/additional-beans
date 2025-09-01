@@ -1,33 +1,24 @@
 package io.additionalbeans.jdbc;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-
 import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariDataSource;
 import io.additionalbeans.commons.AdditionalBeansPostProcessor;
 
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.config.ConstructorArgumentValues;
-import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.JdbcClientAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.JdbcConnectionDetails;
 import org.springframework.boot.autoconfigure.jdbc.JdbcProperties;
-import org.springframework.boot.autoconfigure.transaction.TransactionManagerCustomizers;
+import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.jdbc.HikariCheckpointRestoreLifecycle;
-import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.jdbc.support.SQLExceptionTranslator;
 import org.springframework.transaction.TransactionManager;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
@@ -107,91 +98,34 @@ public class AdditionalJdbcPostProcessor
 
 	private void registerDataSource(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanInstanceSupplier(registry, DataSource.class, prefix,
-				() -> beanFor(DataSourceProperties.class, prefix).initializeDataSourceBuilder().build());
+				() -> configurationPropertiesBean(prefix).initializeDataSourceBuilder().build());
 	}
 
 	private void registerDataSourceTransactionManager(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanInstanceSupplier(registry, TransactionManager.class, prefix, () -> {
-			try {
-				Class<?> jdbcTransactionManagerConfiguration = DataSourceTransactionManagerAutoConfiguration.class
-					.getDeclaredClasses()[0];
-				Constructor<?> ctor = jdbcTransactionManagerConfiguration.getDeclaredConstructor();
-				ctor.setAccessible(true);
-				Object configuration = ctor.newInstance();
-				Method method = jdbcTransactionManagerConfiguration.getDeclaredMethod("transactionManager",
-						Environment.class, DataSource.class, ObjectProvider.class);
-				method.setAccessible(true);
-				return (TransactionManager) method.invoke(configuration, this.environment,
-						beanFor(DataSource.class, prefix), beanProviderOf(TransactionManagerCustomizers.class));
-			}
-			catch (Exception ex) {
-				throw new RuntimeException(ex);
-			}
-		});
+		String configurationBeanName = registerBeanDefinition(registry,
+				DataSourceTransactionManagerAutoConfiguration.class.getName() + ".JdbcTransactionManagerConfiguration",
+				prefix);
+		registerBeanDefinition(registry, TransactionManager.class, prefix, configurationBeanName, "transactionManager");
 	}
 
 	private void registerJdbcTemplate(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanInstanceSupplier(registry, JdbcTemplate.class, prefix, () -> {
-			try {
-				Class<?> clazz = ClassUtils.forName(
-						DataSourceAutoConfiguration.class.getPackageName() + ".JdbcTemplateConfiguration",
-						DataSourceAutoConfiguration.class.getClassLoader());
-				Constructor<?> ctor = clazz.getDeclaredConstructor();
-				ctor.setAccessible(true);
-				Object configuration = ctor.newInstance();
-				Method method = clazz.getDeclaredMethod("jdbcTemplate", DataSource.class, JdbcProperties.class,
-						ObjectProvider.class);
-				method.setAccessible(true);
-				return (JdbcTemplate) method.invoke(configuration, beanFor(DataSource.class, prefix),
-						beanFor(JdbcProperties.class, prefix), beanProviderOf(SQLExceptionTranslator.class));
-			}
-			catch (Exception ex) {
-				throw new RuntimeException(ex);
-			}
-		});
-
-		registerBeanInstanceSupplier(registry, NamedParameterJdbcTemplate.class, prefix, () -> {
-			try {
-				Class<?> clazz = ClassUtils.forName(
-						DataSourceAutoConfiguration.class.getPackageName() + ".NamedParameterJdbcTemplateConfiguration",
-						DataSourceAutoConfiguration.class.getClassLoader());
-				Constructor<?> ctor = clazz.getDeclaredConstructor();
-				ctor.setAccessible(true);
-				Object configuration = ctor.newInstance();
-				Method method = clazz.getDeclaredMethod("namedParameterJdbcTemplate", JdbcTemplate.class);
-				method.setAccessible(true);
-				return (NamedParameterJdbcTemplate) method.invoke(configuration, beanFor(JdbcTemplate.class, prefix));
-			}
-			catch (Exception ex) {
-				throw new RuntimeException(ex);
-			}
-		});
+		String configurationBeanName = registerBeanDefinition(registry,
+				JdbcTemplateAutoConfiguration.class.getPackageName() + ".JdbcTemplateConfiguration", prefix);
+		registerBeanDefinition(registry, JdbcTemplate.class, prefix, configurationBeanName, "jdbcTemplate");
+		configurationBeanName = registerBeanDefinition(registry,
+				JdbcTemplateAutoConfiguration.class.getPackageName() + ".NamedParameterJdbcTemplateConfiguration",
+				prefix);
+		registerBeanDefinition(registry, NamedParameterJdbcTemplate.class, prefix, configurationBeanName,
+				"namedParameterJdbcTemplate");
 	}
 
 	private void registerJdbcClient(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanInstanceSupplier(registry, JdbcClient.class, prefix, () -> {
-			JdbcClientAutoConfiguration configuration = new JdbcClientAutoConfiguration();
-			try {
-				Method method = JdbcClientAutoConfiguration.class.getDeclaredMethod("jdbcClient",
-						NamedParameterJdbcTemplate.class);
-				method.setAccessible(true);
-				return (JdbcClient) method.invoke(configuration, beanFor(NamedParameterJdbcTemplate.class, prefix));
-			}
-			catch (Exception ex) {
-				throw new RuntimeException(ex);
-			}
-		});
+		String configurationBeanName = registerBeanDefinition(registry, JdbcClientAutoConfiguration.class, prefix);
+		registerBeanDefinition(registry, JdbcClient.class, prefix, configurationBeanName, "jdbcClient");
 	}
 
 	private void registerHikariCheckpointRestoreLifecycle(BeanDefinitionRegistry registry, String prefix) {
-		registerBeanDefinition(registry, HikariCheckpointRestoreLifecycle.class, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			ConstructorArgumentValues arguments = new ConstructorArgumentValues();
-			arguments.addGenericArgumentValue(new RuntimeBeanReference(beanNameFor(DataSource.class, prefix)));
-			arguments.addGenericArgumentValue(this.applicationContext);
-			beanDefinition.setConstructorArgumentValues(arguments);
-			return beanDefinition;
-		});
+		registerBeanDefinition(registry, HikariCheckpointRestoreLifecycle.class, prefix);
 	}
 
 	private boolean useHikariFor(String prefix) {

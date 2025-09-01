@@ -67,9 +67,9 @@ class AdditionalKafkaAutoConfigurationTests {
 	void testKafkaProducerFactory() {
 		runner.run((ctx) -> {
 			DefaultKafkaProducerFactory<?, ?> kafkaProducerFactory = ctx.getBean(DefaultKafkaProducerFactory.class);
-			DefaultKafkaProducerFactory<?, ?> fooKafkaProducerFactory = ctx.getBean("fooKafkaProducerFactory",
+			DefaultKafkaProducerFactory<?, ?> fooKafkaProducerFactory = ctx.getBean("fooProducerFactory",
 					DefaultKafkaProducerFactory.class);
-			DefaultKafkaProducerFactory<?, ?> barKafkaProducerFactory = ctx.getBean("barKafkaProducerFactory",
+			DefaultKafkaProducerFactory<?, ?> barKafkaProducerFactory = ctx.getBean("barProducerFactory",
 					DefaultKafkaProducerFactory.class);
 			assertThat(kafkaProducerFactory).isNotSameAs(fooKafkaProducerFactory);
 			assertThat(kafkaProducerFactory).isNotSameAs(barKafkaProducerFactory);
@@ -96,9 +96,9 @@ class AdditionalKafkaAutoConfigurationTests {
 	void testKafkaConsumerFactory() {
 		runner.run((ctx) -> {
 			DefaultKafkaConsumerFactory<?, ?> kafkaConsumerFactory = ctx.getBean(DefaultKafkaConsumerFactory.class);
-			DefaultKafkaConsumerFactory<?, ?> fooKafkaConsumerFactory = ctx.getBean("fooKafkaConsumerFactory",
+			DefaultKafkaConsumerFactory<?, ?> fooKafkaConsumerFactory = ctx.getBean("fooConsumerFactory",
 					DefaultKafkaConsumerFactory.class);
-			DefaultKafkaConsumerFactory<?, ?> barKafkaConsumerFactory = ctx.getBean("barKafkaConsumerFactory",
+			DefaultKafkaConsumerFactory<?, ?> barKafkaConsumerFactory = ctx.getBean("barConsumerFactory",
 					DefaultKafkaConsumerFactory.class);
 			assertThat(kafkaConsumerFactory).isNotSameAs(fooKafkaConsumerFactory);
 			assertThat(kafkaConsumerFactory).isNotSameAs(barKafkaConsumerFactory);
