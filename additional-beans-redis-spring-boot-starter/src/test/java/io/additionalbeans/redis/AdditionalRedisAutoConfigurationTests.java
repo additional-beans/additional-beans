@@ -25,7 +25,7 @@ class AdditionalRedisAutoConfigurationTests {
 		.withConfiguration(AutoConfigurations.of(RedisAutoConfiguration.class, AdditionalRedisAutoConfiguration.class))
 		.withPropertyValues("additional.redis.prefixes=foo,bar", "spring.data.redis.database=1",
 				"spring.data.redis.username=default", "foo.data.redis.database=2", "foo.data.redis.username=foo",
-				"bar.data.redis.database=3", "bar.data.redis.username=bar", "bar.data.redis.client-type=jedis");
+				"bar.data.redis.database=3", "bar.data.redis.client-type=jedis");
 
 	@Test
 	void testRedisProperties() {
@@ -40,6 +40,9 @@ class AdditionalRedisAutoConfigurationTests {
 			assertThat(redisProperties.getDatabase()).isEqualTo(1);
 			assertThat(fooRedisProperties.getDatabase()).isEqualTo(2);
 			assertThat(barRedisProperties.getDatabase()).isEqualTo(3);
+			assertThat(redisProperties.getUsername()).isEqualTo("default");
+			assertThat(fooRedisProperties.getUsername()).isEqualTo("foo");
+			assertThat(barRedisProperties.getUsername()).isEqualTo(redisProperties.getUsername());
 		});
 	}
 

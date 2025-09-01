@@ -1,9 +1,15 @@
 package io.additionalbeans.commons;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.InitializingBean;
@@ -60,6 +66,10 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 		this.defaultConfigurationPropertiesPrefix = configurationProperties.prefix();
 	}
 
+	protected Set<Class<?>> getSharedTypes() {
+		return Collections.emptySet();
+	}
+
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.applicationContext = applicationContext;
@@ -109,8 +119,6 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 		}
 	}
 
-	protected abstract void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix);
-
 	protected void registerConfigurationProperties(BeanDefinitionRegistry registry, String prefix) {
 		registerBeanDefinition(registry, this.configurationPropertiesClass, prefix);
 		String propertiesConnectionDetailsClassName = this.connectionDetailsClass.getPackageName() + ".Properties"
@@ -121,44 +129,68 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 		}
 	}
 
-	protected RootBeanDefinition buildConnectionDetailsBeanDefinition(String propertiesConnectionDetailsClassName,
+	protected abstract void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix);
+
+	private RootBeanDefinition buildConnectionDetailsBeanDefinition(String propertiesConnectionDetailsClassName,
 			String prefix) {
 		RootBeanDefinition beanDefinition = new RootBeanDefinition();
 		beanDefinition.setInstanceSupplier(() -> {
 			try {
 				Class<?> clazz = ClassUtils.forName(propertiesConnectionDetailsClassName,
 						this.connectionDetailsClass.getClassLoader());
-				Constructor<?> constructor = clazz.getDeclaredConstructors()[0];
-				constructor.setAccessible(true);
-				if (constructor.getParameterCount() == 1) {
-					return constructor.newInstance(beanFor(this.configurationPropertiesClass, prefix));
-				}
-				else if (constructor.getParameterCount() == 2
-						&& constructor.getParameterTypes()[1] == SslBundles.class) {
-					return constructor.newInstance(beanFor(this.configurationPropertiesClass, prefix),
-							beanProviderOf(SslBundles.class).getIfAvailable());
-				}
-				else {
-					throw new RuntimeException("Unsupported constructor for " + propertiesConnectionDetailsClassName);
-				}
+				return instantiateBean(clazz, prefix);
 			}
-			catch (Exception ex) {
+			catch (ClassNotFoundException ex) {
 				throw new RuntimeException(ex);
 			}
 		});
 		return beanDefinition;
 	}
 
-	protected <T> void registerBeanDefinition(BeanDefinitionRegistry registry, Class<T> beanClass, String prefix) {
+	protected String registerBeanDefinition(BeanDefinitionRegistry registry, Class<?> beanClass, String prefix) {
 		String beanName = beanNameFor(beanClass, prefix);
 		if (!registry.containsBeanDefinition(beanName)) {
 			RootBeanDefinition bd = new RootBeanDefinition(beanClass);
 			bd.setDefaultCandidate(false);
+			Constructor<?>[] constructors = beanClass.getDeclaredConstructors();
+			if (constructors.length == 1 && constructors[0].getParameterCount() > 0) {
+				bd.setInstanceSupplier(() -> instantiateBean(beanClass, prefix));
+			}
 			registry.registerBeanDefinition(beanName, bd);
+		}
+		return beanName;
+	}
+
+	protected String registerBeanDefinition(BeanDefinitionRegistry registry, String beanClassName, String prefix) {
+		try {
+			return registerBeanDefinition(registry,
+					ClassUtils.forName(beanClassName, this.configurationPropertiesClass.getClassLoader()), prefix);
+		}
+		catch (ClassNotFoundException ex) {
+			throw new RuntimeException(ex);
 		}
 	}
 
-	protected <T> void registerBeanDefinition(BeanDefinitionRegistry registry, Class<T> beanClass, String prefix,
+	protected String registerBeanDefinition(BeanDefinitionRegistry registry, Class<?> beanClass, String prefix,
+			String configurationBeanName, String factoryMethodName) {
+		return this.registerBeanInstanceSupplier(registry, beanClass, prefix,
+				() -> createBean(configurationBeanName, factoryMethodName, prefix));
+	}
+
+	protected <T> String registerBeanInstanceSupplier(BeanDefinitionRegistry registry, Class<T> beanClass,
+			String prefix, Supplier<T> instanceSupplier) {
+		return this.registerBeanDefinition(registry, beanClass, prefix, () -> {
+			RootBeanDefinition beanDefinition = new RootBeanDefinition();
+			beanDefinition.setInstanceSupplier(instanceSupplier);
+			return beanDefinition;
+		});
+	}
+
+	protected CP configurationPropertiesBean(String prefix) {
+		return beanFor(this.configurationPropertiesClass, prefix);
+	}
+
+	private String registerBeanDefinition(BeanDefinitionRegistry registry, Class<?> beanClass, String prefix,
 			Supplier<RootBeanDefinition> beanDefinitionSupplier) {
 		String beanName = beanNameFor(beanClass, prefix);
 		if (!registry.containsBeanDefinition(beanName)) {
@@ -169,32 +201,97 @@ public abstract class AdditionalBeansPostProcessor<CP, CD>
 			}
 			registry.registerBeanDefinition(beanName, bd);
 		}
+		return beanName;
 	}
 
-	protected <T> void registerBeanInstanceSupplier(BeanDefinitionRegistry registry, Class<T> beanClass, String prefix,
-			Supplier<T> instanceSupplier) {
-		this.registerBeanDefinition(registry, beanClass, prefix, () -> {
-			RootBeanDefinition beanDefinition = new RootBeanDefinition();
-			beanDefinition.setInstanceSupplier(instanceSupplier);
-			return beanDefinition;
-		});
+	private String beanNameFor(Class<?> beanClass, String prefix) {
+		String beanClassName = beanClass.getSimpleName();
+		String classPrefix = "Default";
+		if (beanClassName.startsWith(classPrefix)) {
+			beanClassName = beanClassName.substring(classPrefix.length());
+		}
+		return prefix + beanClassName;
 	}
 
-	protected <T> ObjectProvider<T> beanProviderOf(Class<T> beanClass) {
-		return this.applicationContext.getBeanProvider(beanClass);
-	}
-
-	protected <T> T beanFor(Class<T> beanClass, String prefix) {
+	private <T> T beanFor(Class<T> beanClass, String prefix) {
 		return this.applicationContext.getBean(beanNameFor(beanClass, prefix), beanClass);
 	}
 
-	protected String beanNameFor(Class<?> beanClass, String prefix) {
-		String name = beanClass.getSimpleName();
-		String classPrefix = "Default";
-		if (name.startsWith(classPrefix)) {
-			name = name.substring(classPrefix.length());
+	private <T> ObjectProvider<T> beanProviderOf(Class<T> beanClass) {
+		return this.applicationContext.getBeanProvider(beanClass);
+	}
+
+	private Object instantiateBean(Class<?> clazz, String prefix) {
+		try {
+			Constructor<?> constructor = clazz.getDeclaredConstructors()[0];
+			constructor.setAccessible(true);
+			return constructor.newInstance(resolveParameters(constructor, prefix));
 		}
-		return prefix + name;
+		catch (RuntimeException ex) {
+			throw ex;
+		}
+		catch (Exception ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T createBean(String configurationBeanName, String factoryMethodName, String prefix) {
+		Object configuration = this.applicationContext.getBean(configurationBeanName);
+		try {
+			Method factoryMethod = Stream.of(configuration.getClass().getDeclaredMethods())
+				.filter(m -> m.getName().equals(factoryMethodName))
+				.findFirst()
+				.orElseThrow();
+			factoryMethod.setAccessible(true);
+			return (T) factoryMethod.invoke(configuration, resolveParameters(factoryMethod, prefix));
+		}
+		catch (RuntimeException ex) {
+			throw ex;
+		}
+		catch (Exception ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+
+	private Object[] resolveParameters(Executable executable, String prefix) {
+		Type[] types = executable.getGenericParameterTypes();
+		Object[] parameters = new Object[executable.getParameterCount()];
+		for (int i = 0; i < types.length; i++) {
+			if (types[i] instanceof Class<?> clz) {
+				if (clz.isInstance(this.applicationContext)) {
+					parameters[i] = this.applicationContext;
+				}
+				else if (clz == Environment.class) {
+					parameters[i] = this.applicationContext.getEnvironment();
+				}
+				else if (clz == SslBundles.class) {
+					parameters[i] = beanProviderOf(SslBundles.class).getIfAvailable();
+				}
+				else if (getSharedTypes().contains(clz)) {
+					parameters[i] = beanProviderOf(clz).getIfAvailable();
+				}
+				else {
+					parameters[i] = beanFor(clz, prefix);
+				}
+				continue;
+			}
+			else if (types[i] instanceof ParameterizedType pt) {
+				Type rawType = pt.getRawType();
+				if (rawType instanceof Class<?> clz) {
+					if (clz == ObjectProvider.class) {
+						parameters[i] = beanProviderOf((Class<?>) pt.getActualTypeArguments()[0]);
+					}
+					else {
+						parameters[i] = this.applicationContext.getBean(beanNameFor(clz, prefix));
+					}
+					continue;
+				}
+
+			}
+			throw new RuntimeException("Unsupported parameter type: " + types[i]);
+		}
+		return parameters;
 	}
 
 }

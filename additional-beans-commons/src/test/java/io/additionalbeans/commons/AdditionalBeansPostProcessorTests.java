@@ -3,9 +3,7 @@ package io.additionalbeans.commons;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.DefaultBeanNameGenerator;
-import org.springframework.boot.autoconfigure.data.redis.RedisConnectionDetails;
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -14,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class AdditionalBeansPostProcessorTests {
 
-	AdditionalBeansPostProcessor<RedisProperties, RedisConnectionDetails> processor = new AdditionalBeansPostProcessor<>() {
+	AdditionalBeansPostProcessor<TestProperties, TestConnectionDetails> processor = new AdditionalBeansPostProcessor<>() {
 
 		@Override
 		protected void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix) {
@@ -23,10 +21,17 @@ class AdditionalBeansPostProcessorTests {
 	};
 
 	@Test
-	void testBeanNameFor() {
-		assertThat(this.processor.beanNameFor(RedisProperties.class, "test")).isEqualTo("testRedisProperties");
-		assertThat(this.processor.beanNameFor(DefaultBeanNameGenerator.class, "test"))
-			.isEqualTo("testBeanNameGenerator");
+	void testConfigurationKeyForPrefixes() {
+		assertThat(this.processor.configurationKeyForPrefixes()).isEqualTo("additional.commons.prefixes");
+	}
+
+	@ConfigurationProperties("test")
+	static class TestProperties {
+
+	}
+
+	static class TestConnectionDetails {
+
 	}
 
 }
