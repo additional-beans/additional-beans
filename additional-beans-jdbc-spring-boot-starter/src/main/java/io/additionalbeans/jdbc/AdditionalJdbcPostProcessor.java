@@ -61,10 +61,12 @@ public class AdditionalJdbcPostProcessor
 				String prefix = beanName.substring(0, beanName.length() - suffix.length());
 				if (this.prefixes.contains(prefix)) {
 					String type = bean.getClass().getName();
+					String defaultPrefix = this.defaultConfigurationPropertiesPrefix + '.';
 					String namePrefix = this.defaultConfigurationPropertiesPrefix.replace("spring", prefix) + '.';
 					Bindable<?> bindable = Bindable.ofInstance(bean);
 					switch (type) {
 						case HIKARI_DATASOURCE_CLASS_NAME -> {
+							this.binder.bind(defaultPrefix + "hikari", bindable);
 							this.binder.bind(namePrefix + "hikari", bindable);
 							String name = this.environment.getProperty(namePrefix + "name");
 							if (!StringUtils.hasText(name)) {
@@ -72,9 +74,18 @@ public class AdditionalJdbcPostProcessor
 							}
 							((HikariDataSource) bean).setPoolName(name);
 						}
-						case DBCP2_DATASOURCE_CLASS_NAME -> this.binder.bind(namePrefix + "dbcp2", bindable);
-						case TOMCAT_DATASOURCE_CLASS_NAME -> this.binder.bind(namePrefix + "tomcat", bindable);
-						case ORACLE_UCP_DATASOURCE_CLASS_NAME -> this.binder.bind(namePrefix + "oracleucp", bindable);
+						case DBCP2_DATASOURCE_CLASS_NAME -> {
+							this.binder.bind(defaultPrefix + "dbcp2", bindable);
+							this.binder.bind(namePrefix + "dbcp2", bindable);
+						}
+						case TOMCAT_DATASOURCE_CLASS_NAME -> {
+							this.binder.bind(defaultPrefix + "tomcat", bindable);
+							this.binder.bind(namePrefix + "tomcat", bindable);
+						}
+						case ORACLE_UCP_DATASOURCE_CLASS_NAME -> {
+							this.binder.bind(defaultPrefix + "oracleucp", bindable);
+							this.binder.bind(namePrefix + "oracleucp", bindable);
+						}
 					}
 
 				}

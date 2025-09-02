@@ -36,13 +36,12 @@ class AdditionalDataSourceAutoConfigurationTests {
 				JdbcClientAutoConfiguration.class, AdditionalJdbcAutoConfiguration.class))
 		.withPropertyValues("additional.jdbc.prefixes=foo,bar", "spring.datasource.name=spring",
 				"spring.datasource.driver-class-name=org.h2.Driver", "spring.datasource.url=jdbc:h2:mem:default",
-				"spring.datasource.hikari.minimum-idle=10", "spring.datasource.hikari.maximum-pool-size=20",
+				"spring.datasource.hikari.minimum-idle=7", "spring.datasource.hikari.maximum-pool-size=20",
 				"spring.jdbc.template.fetch-size=100", "spring.jdbc.template.max-rows=1000", "foo.datasource.name=foo",
 				"foo.datasource.url=jdbc:h2:mem:foo", "foo.datasource.hikari.minimum-idle=20",
 				"foo.datasource.hikari.maximum-pool-size=40", "foo.jdbc.template.max-rows=2000",
 				"bar.datasource.name=bar", "bar.datasource.url=jdbc:h2:mem:bar",
-				"bar.datasource.hikari.minimum-idle=30", "bar.datasource.hikari.maximum-pool-size=60",
-				"bar.jdbc.template.max-rows=3000");
+				"bar.datasource.hikari.maximum-pool-size=60", "bar.jdbc.template.max-rows=3000");
 
 	@Test
 	void testDataSourceProperties() {
@@ -84,7 +83,7 @@ class AdditionalDataSourceAutoConfigurationTests {
 			DataSource barDataSource = ctx.getBean("barDataSource", DataSource.class);
 			assertThat(dataSource).isInstanceOfSatisfying(HikariDataSource.class, (ds) -> {
 				assertThat(ds.getPoolName()).isEqualTo("spring");
-				assertThat(ds.getMinimumIdle()).isEqualTo(10);
+				assertThat(ds.getMinimumIdle()).isEqualTo(7);
 				assertThat(ds.getMaximumPoolSize()).isEqualTo(20);
 			});
 			assertThat(fooDataSource).isInstanceOfSatisfying(HikariDataSource.class, (ds) -> {
@@ -94,7 +93,7 @@ class AdditionalDataSourceAutoConfigurationTests {
 			});
 			assertThat(barDataSource).isInstanceOfSatisfying(HikariDataSource.class, (ds) -> {
 				assertThat(ds.getPoolName()).isEqualTo("bar");
-				assertThat(ds.getMinimumIdle()).isEqualTo(30);
+				assertThat(ds.getMinimumIdle()).isEqualTo(7);
 				assertThat(ds.getMaximumPoolSize()).isEqualTo(60);
 			});
 
