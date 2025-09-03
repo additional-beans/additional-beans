@@ -3,9 +3,9 @@ package io.additionalbeans.redis;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.redis.RedisConnectionDetails;
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisConnectionDetails;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.core.ResolvableType;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -22,7 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AdditionalRedisAutoConfigurationTests {
 
 	private static final ApplicationContextRunner runner = new ApplicationContextRunner()
-		.withConfiguration(AutoConfigurations.of(RedisAutoConfiguration.class, AdditionalRedisAutoConfiguration.class))
+		.withConfiguration(
+				AutoConfigurations.of(DataRedisAutoConfiguration.class, AdditionalRedisAutoConfiguration.class))
 		.withPropertyValues("additional.redis.prefixes=foo,bar", "spring.data.redis.database=1",
 				"spring.data.redis.username=default", "foo.data.redis.database=2", "foo.data.redis.username=foo",
 				"bar.data.redis.database=3", "bar.data.redis.client-type=jedis");
@@ -30,36 +31,40 @@ class AdditionalRedisAutoConfigurationTests {
 	@Test
 	void testRedisProperties() {
 		runner.run((ctx) -> {
-			RedisProperties redisProperties = ctx.getBean(RedisProperties.class);
-			RedisProperties fooRedisProperties = ctx.getBean("fooRedisProperties", RedisProperties.class);
-			RedisProperties barRedisProperties = ctx.getBean("barRedisProperties", RedisProperties.class);
-			assertThat(fooRedisProperties.getHost()).isEqualTo(redisProperties.getHost());
-			assertThat(fooRedisProperties.getPort()).isEqualTo(redisProperties.getPort());
-			assertThat(barRedisProperties.getHost()).isEqualTo(redisProperties.getHost());
-			assertThat(barRedisProperties.getPort()).isEqualTo(redisProperties.getPort());
-			assertThat(redisProperties.getDatabase()).isEqualTo(1);
-			assertThat(fooRedisProperties.getDatabase()).isEqualTo(2);
-			assertThat(barRedisProperties.getDatabase()).isEqualTo(3);
-			assertThat(redisProperties.getUsername()).isEqualTo("default");
-			assertThat(fooRedisProperties.getUsername()).isEqualTo("foo");
-			assertThat(barRedisProperties.getUsername()).isEqualTo(redisProperties.getUsername());
+			DataRedisProperties dataRedisProperties = ctx.getBean(DataRedisProperties.class);
+			DataRedisProperties fooDataRedisProperties = ctx.getBean("fooDataRedisProperties",
+					DataRedisProperties.class);
+			DataRedisProperties barDataRedisProperties = ctx.getBean("barDataRedisProperties",
+					DataRedisProperties.class);
+			assertThat(fooDataRedisProperties.getHost()).isEqualTo(dataRedisProperties.getHost());
+			assertThat(fooDataRedisProperties.getPort()).isEqualTo(dataRedisProperties.getPort());
+			assertThat(barDataRedisProperties.getHost()).isEqualTo(dataRedisProperties.getHost());
+			assertThat(barDataRedisProperties.getPort()).isEqualTo(dataRedisProperties.getPort());
+			assertThat(dataRedisProperties.getDatabase()).isEqualTo(1);
+			assertThat(fooDataRedisProperties.getDatabase()).isEqualTo(2);
+			assertThat(barDataRedisProperties.getDatabase()).isEqualTo(3);
+			assertThat(dataRedisProperties.getUsername()).isEqualTo("default");
+			assertThat(fooDataRedisProperties.getUsername()).isEqualTo("foo");
+			assertThat(barDataRedisProperties.getUsername()).isEqualTo(dataRedisProperties.getUsername());
 		});
 	}
 
 	@Test
 	void testRedisConnectionDetails() {
 		runner.run((ctx) -> {
-			RedisConnectionDetails redisProperties = ctx.getBean(RedisConnectionDetails.class);
-			RedisProperties fooRedisProperties = ctx.getBean("fooRedisProperties", RedisProperties.class);
-			RedisProperties barRedisProperties = ctx.getBean("barRedisProperties", RedisProperties.class);
-			RedisConnectionDetails redisConnectionDetails = ctx.getBean(RedisConnectionDetails.class);
-			RedisConnectionDetails fooRedisConnectionDetails = ctx.getBean("fooRedisConnectionDetails",
-					RedisConnectionDetails.class);
-			RedisConnectionDetails barRedisConnectionDetails = ctx.getBean("barRedisConnectionDetails",
-					RedisConnectionDetails.class);
-			assertThat(redisConnectionDetails.getUsername()).isEqualTo(redisProperties.getUsername());
-			assertThat(fooRedisConnectionDetails.getUsername()).isEqualTo(fooRedisProperties.getUsername());
-			assertThat(barRedisConnectionDetails.getUsername()).isEqualTo(barRedisProperties.getUsername());
+			DataRedisConnectionDetails redisProperties = ctx.getBean(DataRedisConnectionDetails.class);
+			DataRedisProperties fooDataRedisProperties = ctx.getBean("fooDataRedisProperties",
+					DataRedisProperties.class);
+			DataRedisProperties barDataRedisProperties = ctx.getBean("barDataRedisProperties",
+					DataRedisProperties.class);
+			DataRedisConnectionDetails dataRedisConnectionDetails = ctx.getBean(DataRedisConnectionDetails.class);
+			DataRedisConnectionDetails fooDataRedisConnectionDetails = ctx.getBean("fooDataRedisConnectionDetails",
+					DataRedisConnectionDetails.class);
+			DataRedisConnectionDetails barDataRedisConnectionDetails = ctx.getBean("barDataRedisConnectionDetails",
+					DataRedisConnectionDetails.class);
+			assertThat(dataRedisConnectionDetails.getUsername()).isEqualTo(redisProperties.getUsername());
+			assertThat(fooDataRedisConnectionDetails.getUsername()).isEqualTo(fooDataRedisProperties.getUsername());
+			assertThat(barDataRedisConnectionDetails.getUsername()).isEqualTo(barDataRedisProperties.getUsername());
 		});
 	}
 

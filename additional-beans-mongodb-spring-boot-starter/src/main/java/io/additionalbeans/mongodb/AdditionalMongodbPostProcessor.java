@@ -7,11 +7,11 @@ import com.mongodb.client.MongoClient;
 import io.additionalbeans.commons.AdditionalBeansPostProcessor;
 
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
-import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
-import org.springframework.boot.autoconfigure.mongo.MongoConnectionDetails;
-import org.springframework.boot.autoconfigure.mongo.MongoProperties;
-import org.springframework.boot.autoconfigure.mongo.StandardMongoClientSettingsBuilderCustomizer;
+import org.springframework.boot.data.mongodb.autoconfigure.DataMongoAutoConfiguration;
+import org.springframework.boot.mongodb.autoconfigure.MongoAutoConfiguration;
+import org.springframework.boot.mongodb.autoconfigure.MongoConnectionDetails;
+import org.springframework.boot.mongodb.autoconfigure.MongoProperties;
+import org.springframework.boot.mongodb.autoconfigure.StandardMongoClientSettingsBuilderCustomizer;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.convert.MongoConverter;
@@ -31,7 +31,7 @@ public class AdditionalMongodbPostProcessor
 	protected void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix) {
 		registerMongoClientSettingsConfiguration(registry, prefix);
 		registerMongoClient(registry, prefix);
-		if (registry.containsBeanDefinition(MongoDataAutoConfiguration.class.getName())) {
+		if (registry.containsBeanDefinition(DataMongoAutoConfiguration.class.getName())) {
 			registerMongoDatabaseFactory(registry, prefix);
 			registerMongoTemplate(registry, prefix);
 		}
@@ -53,14 +53,14 @@ public class AdditionalMongodbPostProcessor
 
 	private void registerMongoDatabaseFactory(BeanDefinitionRegistry registry, String prefix) {
 		String configurationBeanName = registerBeanDefinition(registry,
-				MongoDataAutoConfiguration.class.getPackageName() + ".MongoDatabaseFactoryConfiguration", prefix);
+				DataMongoAutoConfiguration.class.getPackageName() + ".MongoDatabaseFactoryConfiguration", prefix);
 		registerBeanDefinition(registry, MongoDatabaseFactory.class, prefix, configurationBeanName,
 				"mongoDatabaseFactory");
 	}
 
 	private void registerMongoTemplate(BeanDefinitionRegistry registry, String prefix) {
 		String configurationBeanName = registerBeanDefinition(registry,
-				MongoDataAutoConfiguration.class.getPackageName() + ".MongoDatabaseFactoryDependentConfiguration",
+				DataMongoAutoConfiguration.class.getPackageName() + ".MongoDatabaseFactoryDependentConfiguration",
 				prefix);
 		registerBeanDefinition(registry, MongoTemplate.class, prefix, configurationBeanName, "mongoTemplate");
 	}

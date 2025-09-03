@@ -4,10 +4,10 @@ import com.mongodb.client.MongoClient;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
-import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
-import org.springframework.boot.autoconfigure.mongo.MongoConnectionDetails;
-import org.springframework.boot.autoconfigure.mongo.MongoProperties;
+import org.springframework.boot.data.mongodb.autoconfigure.DataMongoAutoConfiguration;
+import org.springframework.boot.mongodb.autoconfigure.MongoAutoConfiguration;
+import org.springframework.boot.mongodb.autoconfigure.MongoConnectionDetails;
+import org.springframework.boot.mongodb.autoconfigure.MongoProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -20,11 +20,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AdditionalMongodbAutoConfigurationTests {
 
 	private static final ApplicationContextRunner runner = new ApplicationContextRunner()
-		.withConfiguration(AutoConfigurations.of(MongoAutoConfiguration.class, MongoDataAutoConfiguration.class,
+		.withConfiguration(AutoConfigurations.of(MongoAutoConfiguration.class, DataMongoAutoConfiguration.class,
 				AdditionalMongodbAutoConfiguration.class))
-		.withPropertyValues("additional.mongodb.prefixes=foo,bar", "spring.data.mongodb.host=127.0.0.1",
-				"spring.data.mongodb.port=27017", "foo.data.mongodb.port=27018", "foo.data.mongodb.database=foo",
-				"bar.data.mongodb.port=27019", "bar.data.mongodb.database=bar");
+		.withPropertyValues("additional.mongodb.prefixes=foo,bar", "spring.mongodb.host=127.0.0.1",
+				"spring.mongodb.port=27017", "foo.mongodb.port=27018", "foo.mongodb.database=foo",
+				"bar.mongodb.port=27019", "bar.mongodb.database=bar");
 
 	@Test
 	void testMongoProperties() {

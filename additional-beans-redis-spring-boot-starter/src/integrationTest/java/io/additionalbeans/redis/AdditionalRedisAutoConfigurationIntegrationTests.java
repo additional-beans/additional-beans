@@ -8,8 +8,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisProperties;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 		"foo.data.redis.database=2", "bar.data.redis.database=3", "bar.data.redis.client-type=jedis" })
 @SpringJUnitConfig
 @Testcontainers
-@ImportAutoConfiguration({ RedisAutoConfiguration.class, AdditionalRedisAutoConfiguration.class })
+@ImportAutoConfiguration({ DataRedisAutoConfiguration.class, AdditionalRedisAutoConfiguration.class })
 class AdditionalRedisAutoConfigurationIntegrationTests {
 
 	@Container
@@ -40,15 +40,15 @@ class AdditionalRedisAutoConfigurationIntegrationTests {
 	}
 
 	@Autowired
-	private RedisProperties redisProperties;
+	private DataRedisProperties dataRedisProperties;
 
 	@Autowired
-	@Qualifier("fooRedisProperties")
-	private RedisProperties fooRedisProperties;
+	@Qualifier("fooDataRedisProperties")
+	private DataRedisProperties fooDataRedisProperties;
 
 	@Autowired
-	@Qualifier("barRedisProperties")
-	private RedisProperties barRedisProperties;
+	@Qualifier("barDataRedisProperties")
+	private DataRedisProperties barDataRedisProperties;
 
 	@Autowired
 	private RedisTemplate<Object, Object> redisTemplate;
@@ -74,13 +74,13 @@ class AdditionalRedisAutoConfigurationIntegrationTests {
 
 	@Test
 	void testRedisProperties() {
-		assertThat(this.fooRedisProperties.getHost()).isEqualTo(this.redisProperties.getHost());
-		assertThat(this.fooRedisProperties.getPort()).isEqualTo(this.redisProperties.getPort());
-		assertThat(this.barRedisProperties.getHost()).isEqualTo(this.redisProperties.getHost());
-		assertThat(this.barRedisProperties.getPort()).isEqualTo(this.redisProperties.getPort());
-		assertThat(this.redisProperties.getDatabase()).isEqualTo(1);
-		assertThat(this.fooRedisProperties.getDatabase()).isEqualTo(2);
-		assertThat(this.barRedisProperties.getDatabase()).isEqualTo(3);
+		assertThat(this.fooDataRedisProperties.getHost()).isEqualTo(this.dataRedisProperties.getHost());
+		assertThat(this.fooDataRedisProperties.getPort()).isEqualTo(this.dataRedisProperties.getPort());
+		assertThat(this.barDataRedisProperties.getHost()).isEqualTo(this.dataRedisProperties.getHost());
+		assertThat(this.barDataRedisProperties.getPort()).isEqualTo(this.dataRedisProperties.getPort());
+		assertThat(this.dataRedisProperties.getDatabase()).isEqualTo(1);
+		assertThat(this.fooDataRedisProperties.getDatabase()).isEqualTo(2);
+		assertThat(this.barDataRedisProperties.getDatabase()).isEqualTo(3);
 	}
 
 	@Test

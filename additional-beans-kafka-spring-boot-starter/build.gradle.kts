@@ -4,6 +4,5 @@ plugins {
 
 dependencies {
 	implementation(project(":additional-beans-commons"))
-	implementation("org.springframework.boot:spring-boot-starter")
-	implementation("org.springframework.kafka:spring-kafka")
+	implementation("org.springframework.boot:spring-boot-starter-kafka")
 }

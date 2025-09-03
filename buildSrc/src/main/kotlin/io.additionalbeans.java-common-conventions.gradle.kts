@@ -64,7 +64,7 @@ dependencies {
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	integrationTestImplementation(project)
 	integrationTestImplementation("org.springframework.boot:spring-boot-testcontainers")
-	integrationTestImplementation("org.testcontainers:junit-jupiter")
+	integrationTestImplementation("org.testcontainers:testcontainers-junit-jupiter")
 	archRules(project(":additional-beans-archrules"))
 	checkstyle("""io.spring.javaformat:spring-javaformat-checkstyle:${property("javaformat-plugin.version")}""")
 	mockitoAgent("org.mockito:mockito-core") { isTransitive = false }

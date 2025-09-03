@@ -4,9 +4,9 @@ import io.additionalbeans.commons.AdditionalBeansPostProcessor;
 import io.lettuce.core.resource.DefaultClientResources;
 
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.redis.RedisConnectionDetails;
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisConnectionDetails;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisProperties;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -15,7 +15,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
  * @author Yanming Zhou
  */
 public class AdditionalRedisPostProcessor
-		extends AdditionalBeansPostProcessor<RedisProperties, RedisConnectionDetails> {
+		extends AdditionalBeansPostProcessor<DataRedisProperties, DataRedisConnectionDetails> {
 
 	@Override
 	protected void registerBeanDefinitions(BeanDefinitionRegistry registry, String prefix) {
@@ -30,7 +30,7 @@ public class AdditionalRedisPostProcessor
 				: "LettuceConnectionConfiguration";
 
 		String connectionConfigurationBeanName = registerBeanDefinition(registry,
-				RedisAutoConfiguration.class.getPackageName() + '.' + connectionConfigurationClassName, prefix);
+				DataRedisAutoConfiguration.class.getPackageName() + '.' + connectionConfigurationClassName, prefix);
 
 		if (!useJedis) {
 			registerBeanDefinition(registry, DefaultClientResources.class, prefix, connectionConfigurationBeanName,
@@ -41,7 +41,7 @@ public class AdditionalRedisPostProcessor
 	}
 
 	private void registerRedisTemplate(BeanDefinitionRegistry registry, String prefix) {
-		String configurationBeanName = registerBeanDefinition(registry, RedisAutoConfiguration.class, prefix);
+		String configurationBeanName = registerBeanDefinition(registry, DataRedisAutoConfiguration.class, prefix);
 		registerBeanDefinition(registry, RedisTemplate.class, prefix, configurationBeanName, "redisTemplate");
 		registerBeanDefinition(registry, StringRedisTemplate.class, prefix, configurationBeanName,
 				"stringRedisTemplate");
