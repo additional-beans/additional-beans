@@ -3,29 +3,13 @@ plugins {
 	checkstyle
 	id("io.spring.dependency-management")
 	id("io.spring.javaformat")
-	id("com.societegenerale.commons.arch-unit-gradle-plugin")
+	id("com.netflix.nebula.archrules.runner")
 }
 
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(17)
 	}
-}
-
-archUnit {
-	if (project.name.endsWith("-bom")) {
-		isSkip = true
-	}
-	preConfiguredRules = listOf(
-		"com.societegenerale.commons.plugin.rules.NoInjectedFieldTest",
-		"com.societegenerale.commons.plugin.rules.NoTestIgnoreWithoutCommentRuleTest",
-		"com.societegenerale.commons.plugin.rules.NoPrefixForInterfacesRuleTest",
-		"com.societegenerale.commons.plugin.rules.NoPowerMockRuleTest",
-		"com.societegenerale.commons.plugin.rules.NoJodaTimeRuleTest",
-		"com.societegenerale.commons.plugin.rules.NoJunitAssertRuleTest",
-		"com.societegenerale.commons.plugin.rules.StringFieldsThatAreActuallyDatesRuleTest",
-		"io.additionalbeans.build.architecture.ArchitectureRuleTest"
-	)
 }
 
 repositories {
@@ -81,8 +65,15 @@ dependencies {
 	integrationTestImplementation(project)
 	integrationTestImplementation("org.springframework.boot:spring-boot-testcontainers")
 	integrationTestImplementation("org.testcontainers:junit-jupiter")
+	archRules(project(":additional-beans-archrules"))
 	checkstyle("""io.spring.javaformat:spring-javaformat-checkstyle:${property("javaformat-plugin.version")}""")
 	mockitoAgent("org.mockito:mockito-core") { isTransitive = false }
+}
+
+archRules {
+	consoleReportEnabled = false
+	skipPassingSummaries = true
+	failureThreshold("MEDIUM")
 }
 
 java {

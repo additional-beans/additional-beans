@@ -39,7 +39,6 @@ repositories {
 dependencies {
 	implementation("""io.spring.gradle:dependency-management-plugin:${property("dependency-management-plugin.version")}""")
 	implementation("""io.spring.javaformat:spring-javaformat-gradle-plugin:${property("javaformat-plugin.version")}""")
-	implementation("""com.societegenerale.commons:arch-unit-gradle-plugin:${property("arch-unit-gradle-plugin.version")}""")
-	implementation("""com.societegenerale.commons:arch-unit-build-plugin-core:${property("arch-unit-build-plugin-core.version")}""")
+	implementation("""com.netflix.nebula:nebula-archrules-gradle-plugin:${property("nebula-archrules-gradle-plugin.version")}""")
 	implementation("""org.springframework.boot:org.springframework.boot.gradle.plugin:${property("spring-boot.version")}""")
 }
