@@ -19,22 +19,14 @@ publishing {
 			suppressAllPomMetadataWarnings()
 		}
 	}
-	val repoUrlPrefix: String? by project
-	if (repoUrlPrefix != null) {
+	providers.gradleProperty("repoUrlPrefix").map {
 		repositories {
-			val version: String by project
-			val repoUser: String? by project
-			val repoPassword: String? by project
 			maven {
-				url = if (version.endsWith("-SNAPSHOT")) {
-					uri("${repoUrlPrefix}/maven-snapshots/")
-				} else {
-					uri("${repoUrlPrefix}/maven-releases/")
-				}
+				uri("""${it}/maven-${if ((property("version") as String).endsWith("-SNAPSHOT")) "snapshots" else "releases"}/""")
 				isAllowInsecureProtocol = true
 				credentials {
-					username = repoUser
-					password = repoPassword
+					username = providers.gradleProperty("repoUser").orNull
+					password = providers.gradleProperty("repoPassword").orNull
 				}
 			}
 		}

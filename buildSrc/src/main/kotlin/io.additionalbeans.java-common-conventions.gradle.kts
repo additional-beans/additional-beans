@@ -13,7 +13,7 @@ java {
 }
 
 repositories {
-	val repoUrlPrefix: String? by rootProject
+	val repoUrlPrefix = project.findProperty("repoUrlPrefix")
 	if (repoUrlPrefix != null) {
 		maven {
 			url = uri("${repoUrlPrefix}/maven-public/")
@@ -36,10 +36,10 @@ dependencyManagement {
 	}
 }
 
-val integrationTest by sourceSets.creating {
+val integrationTest = sourceSets.create("integrationTest") {
 	compileClasspath += sourceSets.test.get().output
 }
-val integrationTestImplementation by configurations.getting {
+val integrationTestImplementation = configurations.getByName("integrationTestImplementation") {
 	extendsFrom(configurations.testImplementation.get())
 }
 configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
@@ -50,19 +50,19 @@ val integrationTestTask = tasks.register<Test>(integrationTest.name) {
 	classpath = configurations[integrationTest.runtimeClasspathConfigurationName] + sourceSets.test.get().output + integrationTest.output
 	shouldRunAfter(tasks.test)
 }
-val integration: String? by rootProject
+val integration = rootProject.findProject("integration")
 if (integration != null) {
 	tasks.check {
 		dependsOn(integrationTestTask)
 	}
 }
 
-val mockitoAgent by configurations.creating
+val mockitoAgent = configurations.create("mockitoAgent")
 
 dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-	integrationTestImplementation(project)
+	integrationTestImplementation(project())
 	integrationTestImplementation("org.springframework.boot:spring-boot-testcontainers")
 	integrationTestImplementation("org.testcontainers:testcontainers-junit-jupiter")
 	archRules(project(":additional-beans-archrules"))
